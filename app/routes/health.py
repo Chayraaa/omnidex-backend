@@ -1,12 +1,9 @@
 from flask import Blueprint, jsonify, request
 
+# This route monitors the health of the application
+
 health = Blueprint("health", __name__)
 
 @health.route("/health", methods=["GET"])
 def status():
     return jsonify({"status": "ok"})
-
-@health.route("/echo", methods=["POST"])
-def echo():
-    data = request.json
-    return jsonify(data)
