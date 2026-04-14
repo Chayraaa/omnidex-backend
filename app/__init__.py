@@ -27,11 +27,16 @@ def setup_database(app: Flask):
     db.init_app(app)
 
     with app.app_context():
-        # This is kinda cursed, but it makes it possible to create the tables for models without a crash when
-        # it's not there yet. We now dependent on "users". If you delete that -> crash. :3
         inspector = inspect(db.engine)
-        if not inspector.has_table("users"):
-            db.create_all()
+        for table_name, table_obj in db.metadata.tables.items():
+            if not inspector.has_table(table_name):
+                try:
+                    table_obj.create(db.engine)
+                    app.logger.info(f"Created table: {table_name}")
+                except Exception as e:
+                    app.logger.error(f"Error creating table {table_name}")
+            else:
+                app.logger.info(f"Table {table_name} already exists")
 
 
 # Inject services here (LISA, Wikipedia)
@@ -42,7 +47,6 @@ def setup_database(app: Flask):
 # from flask import current_app
 # current_app.external_api.service_mock(param)
 def setup_services(app: Flask):
-    from .services.password_service import PasswordService
     app.password_service = PasswordService()
 
 

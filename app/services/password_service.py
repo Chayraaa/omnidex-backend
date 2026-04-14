@@ -1,5 +1,4 @@
 import datetime
-import hashlib
 import os
 
 import jwt
@@ -14,12 +13,10 @@ class PasswordService:
 
     @staticmethod
     def hash_password(password: str) -> str:
-        # digest = hashlib.sha256(password.encode()).hexdigest()
         return password_context.hash(password)
 
     @staticmethod
     def verify_password(password: str, hashed_password: str) -> bool:
-        # digest = hashlib.sha256(password.encode()).hexdigest()
         return password_context.verify(password, hashed_password)
 
     # Generate a JWT token for the user
@@ -27,7 +24,7 @@ class PasswordService:
     def generate_token(user_id: int):
         payload = {
             "id": user_id,
-            "exp": (datetime.datetime.now() + datetime.timedelta(days=1)).timestamp(),
+            "exp": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)).timestamp(),
         }
 
         return jwt.encode(payload, jwt_secret_key, algorithm="HS256")
