@@ -3,6 +3,7 @@ import os
 from functools import wraps
 
 from flask import Flask, request, jsonify
+
 from app.services.password_service import PasswordService
 
 def setup_logging(app: Flask):
@@ -70,7 +71,15 @@ def login_required(f):
         if not user_id:
             return jsonify({"error": "Invalid or expired token"}), 401
 
-        return f(user_id=user_id, *args, **kwargs)
+        # Query the user from the database
+        from .extensions import db
+        from app.models.user import User
+        user = db.session.query(User).filter_by(id=user_id).first()
+        if not user:
+            return jsonify({"error": "User not found"}), 401
+
+        # Return the user object to the route handler
+        return f(user=user, *args, **kwargs)
 
     return decorated
 
@@ -80,7 +89,7 @@ def create_app():
 
     setup_logging(app)
     setup_database(app)
-    setup_routes(app)
     setup_services(app)
+    setup_routes(app)
 
     return app

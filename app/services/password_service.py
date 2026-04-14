@@ -1,11 +1,12 @@
 import datetime
 import hashlib
+import os
 
 import jwt
 from passlib.context import CryptContext
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-jwt_secret_key = "change_that_at_some_point"
+jwt_secret_key = os.environ.get("JWT_SECRET", "a-secret-key-if-none-was-set-as-env")
 
 class PasswordService:
 
