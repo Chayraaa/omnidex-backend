@@ -41,3 +41,5 @@ will be used to create the finished card.
 
 ## AI Usage
 See [AI Usage](ai-usage-protocol.md)
+
+(Note: The first 11 commits had to be rebased due to the wrong email address. Were done between 4.4.2026 and 14.4.2026)
