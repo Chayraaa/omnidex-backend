@@ -6,18 +6,27 @@ from app.models.user import User
 # This route handles user creation, modification, deletion, login, and logout
 users = Blueprint("users", __name__)
 
-
-# Creates a user and adds it to the database
-@users.route("/create", methods=["POST"])
-def create_user():
-    data = request.get_json()
+# Verification that user and password were provided in the request
+def verify_json_for_user_pass(data):
     name = data["name"]
     password = data["password"]
     if not name or not password:
         return {"message": "Name and password are required."}, 400
     if not isinstance(name, str) and not isinstance(password, str):
         return {"message": "Name and password must be strings."}, 400
+    return name, password
 
+# Creates a user and adds it to the database
+@users.route("/create", methods=["POST"])
+def create_user():
+    data = request.get_json()
+    validated_data = verify_json_for_user_pass(data)
+    if isinstance(validated_data[0], dict):
+        return validated_data[0], validated_data[1]
+    name, password = validated_data
+
+    if db.session.query(User).filter_by(name=name).first():
+        return {"message": "User already exists."}, 400
     user = User(name=name)
     user.set_password(password)
     db.session.add(user)
@@ -30,12 +39,10 @@ def create_user():
 @users.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
-    name = data["name"]
-    password = data["password"]
-    if not name or not password:
-        return {"message": "Name and password are required."}, 400
-    if not isinstance(name, str) and not isinstance(password, str):
-        return {"message": "Name and password must be strings."}, 400
+    validated_data = verify_json_for_user_pass(data)
+    if isinstance(validated_data[0], dict):
+        return validated_data[0], validated_data[1]
+    name, password = validated_data
 
     user = db.session.query(User).filter_by(name=name).first()
     if not user or not user.check_password(password):

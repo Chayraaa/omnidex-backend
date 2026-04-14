@@ -3,8 +3,13 @@ import os
 from functools import wraps
 
 from flask import Flask, request, jsonify
+from sqlalchemy import inspect
 
 from app.services.password_service import PasswordService
+from app.extensions import db
+
+# Add all the db models here
+from app.models.user import User
 
 def setup_logging(app: Flask):
     if app.debug:
@@ -14,7 +19,6 @@ def setup_logging(app: Flask):
     app.logger.setLevel(gunicorn_logger.level)
 
 def setup_database(app: Flask):
-    from .extensions import db
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("SQLALCHEMY_DATABASE_URI",
                                                            "postgresql://user:password@localhost:5432/mydb")
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -22,11 +26,12 @@ def setup_database(app: Flask):
     app.logger.info(f"Connecting to database: {app.config['SQLALCHEMY_DATABASE_URI']}")
     db.init_app(app)
 
-    # Add all the models here
-    from .models.user import User
-
     with app.app_context():
-        db.create_all()
+        # This is kinda cursed, but it makes it possible to create the tables for models without a crash when
+        # it's not there yet. We now dependent on "users". If you delete that -> crash. :3
+        inspector = inspect(db.engine)
+        if not inspector.has_table("users"):
+            db.create_all()
 
 
 # Inject services here (LISA, Wikipedia)
@@ -72,9 +77,7 @@ def login_required(f):
             return jsonify({"error": "Invalid or expired token"}), 401
 
         # Query the user from the database
-        from .extensions import db
-        from app.models.user import User
-        user = db.session.query(User).filter_by(id=user_id).first()
+        user = db.session.get(User, user_id)
         if not user:
             return jsonify({"error": "User not found"}), 401
 

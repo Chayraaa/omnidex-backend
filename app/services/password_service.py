@@ -6,26 +6,28 @@ import jwt
 from passlib.context import CryptContext
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-jwt_secret_key = os.environ.get("JWT_SECRET", "a-secret-key-if-none-was-set-as-env")
+jwt_secret_key = os.environ.get("JWT_SECRET")
+if not jwt_secret_key:
+    raise ValueError("JWT_SECRET environment variable is not set")
 
 class PasswordService:
 
     @staticmethod
     def hash_password(password: str) -> str:
-        digest = hashlib.sha256(password.encode()).hexdigest()
-        return password_context.hash(digest)
+        # digest = hashlib.sha256(password.encode()).hexdigest()
+        return password_context.hash(password)
 
     @staticmethod
     def verify_password(password: str, hashed_password: str) -> bool:
-        digest = hashlib.sha256(password.encode()).hexdigest()
-        return password_context.verify(digest, hashed_password)
+        # digest = hashlib.sha256(password.encode()).hexdigest()
+        return password_context.verify(password, hashed_password)
 
     # Generate a JWT token for the user
     @staticmethod
     def generate_token(user_id: int):
         payload = {
             "id": user_id,
-            "exp_date": (datetime.datetime.now() + datetime.timedelta(days=1)).timestamp(),
+            "exp": (datetime.datetime.now() + datetime.timedelta(days=1)).timestamp(),
         }
 
         return jwt.encode(payload, jwt_secret_key, algorithm="HS256")

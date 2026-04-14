@@ -1,3 +1,5 @@
+from sqlalchemy.orm import Mapped, mapped_column
+
 from app.extensions import db
 from app.services.password_service import PasswordService
 
@@ -7,9 +9,9 @@ from app.services.password_service import PasswordService
 class User(db.Model):
     __tablename__ = "users"
 
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
-    password = db.Column(db.String(255), nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(nullable=False)
+    password: Mapped[str] = mapped_column(nullable=False)
 
     def set_password(self, password: str):
         self.password = PasswordService.hash_password(password)
