@@ -1,8 +1,11 @@
+import datetime
 import hashlib
 
+import jwt
 from passlib.context import CryptContext
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+jwt_secret_key = "change_that_at_some_point"
 
 class PasswordService:
 
@@ -15,3 +18,24 @@ class PasswordService:
     def verify_password(password: str, hashed_password: str) -> bool:
         digest = hashlib.sha256(password.encode()).hexdigest()
         return password_context.verify(digest, hashed_password)
+
+    # Generate a JWT token for the user
+    @staticmethod
+    def generate_token(user_id: int):
+        payload = {
+            "id": user_id,
+            "exp_date": (datetime.datetime.now() + datetime.timedelta(days=1)).timestamp(),
+        }
+
+        return jwt.encode(payload, jwt_secret_key, algorithm="HS256")
+
+    # Checks the provided token and returns the user id if valid
+    @staticmethod
+    def verify_token(token: str):
+        try:
+            payload = jwt.decode(token, jwt_secret_key, algorithms=["HS256"])
+            return payload.get("id")
+        except jwt.ExpiredSignatureError:
+            return None
+        except jwt.InvalidTokenError:
+            return None

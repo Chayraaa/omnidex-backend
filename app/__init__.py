@@ -1,7 +1,9 @@
 import logging
 import os
+from functools import wraps
 
-from flask import Flask
+from flask import Flask, request, jsonify
+from app.services.password_service import PasswordService
 
 def setup_logging(app: Flask):
     if app.debug:
@@ -44,7 +46,33 @@ def setup_routes(app: Flask):
     app.register_blueprint(health, url_prefix="/api/status")
     from .routes.user import users
     app.register_blueprint(users, url_prefix="/api/users")
+    from .routes.scan import scan
+    app.register_blueprint(scan, url_prefix="/api/scan")
 
+# Login required decorator
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+
+        # Get the token from the Authorization header
+        token = request.headers.get("Authorization")
+        if not token:
+            return jsonify({"error": "Token missing"}), 401
+
+        # Check if the token is in the correct format
+        parts = token.split()
+        if len(parts) != 2 or parts[0].lower() != "bearer":
+            return jsonify({"error": "Invalid Authorization header"}), 401
+
+        # Parsing and verification of the token
+        token = parts[1]
+        user_id = PasswordService.verify_token(token)
+        if not user_id:
+            return jsonify({"error": "Invalid or expired token"}), 401
+
+        return f(user_id=user_id, *args, **kwargs)
+
+    return decorated
 
 # Here everything for app creation is inited.
 def create_app():
