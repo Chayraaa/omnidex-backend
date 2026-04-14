@@ -5,11 +5,14 @@ from functools import wraps
 from flask import Flask, request, jsonify
 from sqlalchemy import inspect
 
+from app.repositories.sql_user_repo import SqlUserRepo
 from app.services.password_service import PasswordService
 from app.extensions import db
 
-# Add all the db models here
-from app.models.user import User
+# Add all the db database_models here
+from app.database_models.user_model import UserModel
+from app.services.user_service import UserService
+
 
 def setup_logging(app: Flask):
     if app.debug:
@@ -17,6 +20,7 @@ def setup_logging(app: Flask):
     gunicorn_logger = logging.getLogger('gunicorn.error')
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)
+
 
 def setup_database(app: Flask):
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("SQLALCHEMY_DATABASE_URI",
@@ -49,6 +53,9 @@ def setup_database(app: Flask):
 def setup_services(app: Flask):
     app.password_service = PasswordService()
 
+    # This is a user management service that you can give different implementations to
+    app.user_service = UserService(SqlUserRepo())
+
 
 # Add all the routes here (see health as example)
 def setup_routes(app: Flask):
@@ -58,6 +65,7 @@ def setup_routes(app: Flask):
     app.register_blueprint(users, url_prefix="/api/users")
     from .routes.scan import scan
     app.register_blueprint(scan, url_prefix="/api/scan")
+
 
 # Login required decorator
 def login_required(f):
@@ -82,7 +90,7 @@ def login_required(f):
             return jsonify({"error": "Invalid or expired token"}), 401
 
         # Query the user from the database
-        user = db.session.get(User, user_id)
+        user = db.session.get(UserModel, user_id)
         if not user:
             return jsonify({"error": "User not found"}), 401
 
@@ -90,6 +98,7 @@ def login_required(f):
         return f(user=user, *args, **kwargs)
 
     return decorated
+
 
 def open_api_page(app):
     from flask_swagger_ui import get_swaggerui_blueprint
@@ -103,6 +112,7 @@ def open_api_page(app):
     )
 
     app.register_blueprint(swagger_ui, url_prefix=swagger_url)
+
 
 # Here everything for app creation is inited.
 def create_app():
