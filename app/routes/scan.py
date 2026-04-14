@@ -9,4 +9,4 @@ scan = Blueprint("scan", __name__)
 @scan.route("/login_test", methods=["GET"])
 @login_required
 def scan_route(user: User):
-    return {"message": f"Hello, {user.name}!"}
+    return {"message": f"Hello, {user.name}!"}, 200

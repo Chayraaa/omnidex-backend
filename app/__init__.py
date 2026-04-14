@@ -66,6 +66,7 @@ def login_required(f):
 
         # Get the token from the Authorization header
         token = request.headers.get("Authorization")
+        print(request.headers)
         if not token:
             return jsonify({"error": "Token missing"}), 401
 
@@ -90,6 +91,19 @@ def login_required(f):
 
     return decorated
 
+def open_api_page(app):
+    from flask_swagger_ui import get_swaggerui_blueprint
+
+    swagger_url = "/docs"
+    api_url = "/static/omnidex-api.yaml"
+
+    swagger_ui = get_swaggerui_blueprint(
+        swagger_url,
+        api_url,
+    )
+
+    app.register_blueprint(swagger_ui, url_prefix=swagger_url)
+
 # Here everything for app creation is inited.
 def create_app():
     app = Flask(__name__)
@@ -98,5 +112,6 @@ def create_app():
     setup_database(app)
     setup_services(app)
     setup_routes(app)
+    open_api_page(app)
 
     return app
