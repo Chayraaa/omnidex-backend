@@ -2,16 +2,27 @@ import logging
 import os
 from functools import wraps
 
-from flask import Flask, request, jsonify
+import yaml
+from flask import Flask, request, jsonify, current_app
+from openapi_core.contrib.flask import FlaskOpenAPIRequest
+from openapi_core.exceptions import OpenAPIError
+from openapi_core.validation.request.exceptions import RequestBodyValidationError, InvalidRequestBody
+from openapi_core.validation.schemas.exceptions import InvalidSchemaValue
 from sqlalchemy import inspect
 
-from app.repositories.sql_user_repo import SqlUserRepo
+from app.repositories.storage_repos.sql_user_repo import SqlUserRepo
+from app.repositories.units_of_work.sql_unit import SqlUnitOfWork
+from app.services.auth_service import AuthService
 from app.services.password_service import PasswordService
 from app.extensions import db
+from openapi_core import OpenAPI
 
 # Add all the db database_models here
 from app.database_models.user_model import UserModel
 from app.services.user_service import UserService
+
+# Open API file path
+api_url = "/static/omnidex-api.yaml"
 
 
 def setup_logging(app: Flask):
@@ -20,6 +31,14 @@ def setup_logging(app: Flask):
     gunicorn_logger = logging.getLogger('gunicorn.error')
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)
+
+
+def setup_openapi(app: Flask):
+    yaml_path = os.path.join(app.root_path, "static", "omnidex-api.yaml")
+    with open(yaml_path, "r") as f:
+        spec = yaml.safe_load(f)
+
+    app.openapi_spec = OpenAPI.from_dict(spec)
 
 
 def setup_database(app: Flask):
@@ -43,18 +62,23 @@ def setup_database(app: Flask):
                 app.logger.info(f"Table {table_name} already exists")
 
 
-# Inject services here (LISA, Wikipedia)
-# Example:
-# from .services.external_api_service import ExternalAPIService
-# app.external_api = ExternalAPIService()
-# Usage in routes:
-# from flask import current_app
-# current_app.external_api.service_mock(param)
-def setup_services(app: Flask):
-    app.password_service = PasswordService()
+########################
+# REGULAR EDITING HERE #
+########################
 
+def setup_services(app: Flask):
+    # Defines the unit of work we are using since some repositories depend on each other.
+    # E.g., you can't store the user in a database without the cards in the database.
+    # When you, e.g., want to change from a database to a file-based storage, you would need to change the unit of work,
+    # not the repositories defined for the services
+    # storage_unit_of_work = SqlUnitOfWork()
+    storage_unit_of_work = SqlUnitOfWork()
+
+    app.password_service = PasswordService()
     # This is a user management service that you can give different implementations to
-    app.user_service = UserService(SqlUserRepo())
+    # A service could also take another service as a dependency. Though make sure to prevent circular dependencies.
+    app.user_service = UserService(storage_unit_of_work.user_repo)
+    app.auth_service = AuthService(storage_unit_of_work.user_repo)
 
 
 # Add all the routes here (see health as example)
@@ -66,6 +90,9 @@ def setup_routes(app: Flask):
     from .routes.scan import scan
     app.register_blueprint(scan, url_prefix="/api/scan")
 
+
+########################
+########################
 
 # Login required decorator
 def login_required(f):
@@ -90,7 +117,7 @@ def login_required(f):
             return jsonify({"error": "Invalid or expired token"}), 401
 
         # Query the user from the database
-        user = db.session.get(UserModel, user_id)
+        user = current_app.user_service.get_user(user_id)
         if not user:
             return jsonify({"error": "User not found"}), 401
 
@@ -100,11 +127,40 @@ def login_required(f):
     return decorated
 
 
+# Validation decorator
+# AI used for beautifying output when validation failed
+def validate(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        openapi = current_app.openapi_spec
+
+        try:
+            openapi_request = FlaskOpenAPIRequest(request)
+            openapi.validate_request(openapi_request)
+        except InvalidRequestBody as e:
+            if isinstance(e.__cause__, InvalidSchemaValue):
+                errors = [err.message for err in e.__cause__.schema_errors]
+            else:
+                errors = [str(e.__cause__)]
+            return jsonify({
+                "error": "Request body validation failed",
+                "fields": errors
+            }), 400
+        except OpenAPIError as e:
+            return jsonify({
+                "error": "Request validation failed",
+                "details": str(e)
+            }), 400
+
+        return f(*args, **kwargs)
+
+    return decorated
+
+
 def open_api_page(app):
     from flask_swagger_ui import get_swaggerui_blueprint
 
     swagger_url = "/docs"
-    api_url = "/static/omnidex-api.yaml"
 
     swagger_ui = get_swaggerui_blueprint(
         swagger_url,
@@ -119,6 +175,7 @@ def create_app():
     app = Flask(__name__)
 
     setup_logging(app)
+    setup_openapi(app)
     setup_database(app)
     setup_services(app)
     setup_routes(app)

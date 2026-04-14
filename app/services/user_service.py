@@ -2,9 +2,11 @@ from app.domain_models.user import User
 from app.repositories.interfaces.user_repo_protocol import UserRepoProtocol
 from app.services.password_service import PasswordService
 
-# The user service is completely decoupled from the database. It just interacts with repo
+# The user service is completely decoupled from the database. It just interacts with repo.
 # repo is the protocol defined. It will accept any Object that provides the methods requested
 # by the protocol. See SqlUserRepo for an example.
+# Services are use-case-specific. So they handle a single use-case. In this case, user management.
+# For cards, you would have a service that manages cards but also registers them to the user e.g.
 class UserService:
     def __init__(self, repo: UserRepoProtocol):
         self.repo = repo
