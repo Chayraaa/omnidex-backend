@@ -1,0 +1,52 @@
+# KI-Nutzungsprotokoll zur Studienarbeit
+
+## Angaben zur Arbeit
+
+- Gruppenname:
+- Titel der Studienarbeit:
+- KI genutzt: ja / nein
+- Verwendete KI-Werkzeuge:
+
+Wenn keine KI genutzt wurde, reicht hier die Angabe "nein". In diesem Fall müssen die folgenden Abschnitte nicht
+ausgefüllt werden.
+
+## Kurz-Erklärung
+
+Dieses Protokoll wird als Markdown-Datei im Git-Repository der Gruppe geführt.
+Wesentliche KI-Nutzungen werden hier kurz und zeitnah dokumentiert.
+Die Nachvollziehbarkeit über Versionen ergibt sich aus der Git-Historie dieser Datei.
+
+Für diese Studienarbeit wurden KI-Werkzeuge als Unterstützung verwendet.
+Die wesentlichen Nutzungen sind unten dokumentiert.
+Alle übernommenen Inhalte wurden fachlich geprüft, bei Bedarf angepasst und in die Arbeit eigenverantwortlich
+integriert.
+
+## Übersicht der KI-Nutzung
+
+Tragen Sie hier die wesentlichen Nutzungen ein.
+Wenn ähnliche Nutzungen in engem Zusammenhang stehen, können Sie sie zusammenfassen.
+Pflegen Sie das Protokoll möglichst zeitnah, damit die Git-Historie die Entwicklung nachvollziehbar macht. Nutzen Sie
+KI, um Ihren Promtverlauf entsprechnd dieser Vorlage festzuhalten.
+
+| Datum      | Anwender der KI | Werkzeug | Nutzung kurz beschrieben                                                                               | Übernahme und Anpassung kurz beschrieben                                                          |
+|------------|-----------------|----------|--------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
+| 2026-04-04 | Karla           | ChatGPT  | SQLAlchemy + Flask App-Init, Tabellen-Erstellung, App Context, Sequence/Unique Issues                  | Beispiele für Standardnutzung, Bug fixes nach Implementierung                                     |
+| 2026-04-13 | Karla           | ChatGPT  | Hexagonale Architektur + Flask Design diskutiert (Repository Pattern, Protocols, Dependency Injection) | Refactoring-Ansatz entwickelt: Entkopplung von DB-Zugriffen über Interfaces/Protocols             |
+| 2026-04-14 | Karla           | ChatGPT  | Konzept für globale Validierung / API Setup-Struktur in Flask                                          | Architekturentscheidung: Validierung zentral durch openAPI in App-Setup integriert statt verteilt |
+
+## Optionale ergänzende Hinweise
+
+Hier können Sie bei Bedarf kurz ergänzen,
+
+- wie Sie mit fehlerhaften KI-Antworten umgegangen sind,
+- welche Vorschläge Sie bewusst verworfen haben,
+- in welchen Fällen die KI nur als Sparringspartner diente.
+
+## Eigenständigkeit und Verantwortung
+
+Wir bestätigen, dass die KI-Nutzung in dieser Arbeit vollständig und nach bestem Wissen dokumentiert wurde.
+Wir übernehmen die Verantwortung für die fachliche Richtigkeit, die Auswahl der übernommenen Inhalte und die gesamte
+abgegebene Arbeit.
+
+- Datum:
+- Gruppenname:
