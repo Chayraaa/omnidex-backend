@@ -1,7 +1,7 @@
 from flask import Blueprint
 
 from app import validate, login_required
-from app.database_models.user_model import UserModel
+from app.domain_models.user import User
 
 scan = Blueprint("scan", __name__)
 
@@ -10,5 +10,5 @@ scan = Blueprint("scan", __name__)
 @scan.route("/login_test", methods=["GET"])
 @login_required
 @validate
-def scan_route(user: UserModel):
+def scan_route(user: User):
     return {"message": f"Hello, {user.name}!"}, 200
