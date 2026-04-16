@@ -1,6 +1,7 @@
 from flask import Blueprint, request, current_app
 
-from app import validate
+from app import validate, login_required
+from app.domain_models.user import User
 
 # This route handles user creation, modification, deletion, login, and logout
 users = Blueprint("users", __name__)
@@ -37,3 +38,24 @@ def login():
         "message": "Login successful. Use token for authentication.",
         "token": token
     }, 200
+
+
+@users.route("/set_profile_picture", methods=["POST"])
+@validate
+@login_required
+def set_profile_picture(user: User):
+    data: dict = request.get_json()
+    image = data.get("image")
+
+    current_app.image_service.save_image(user, image, True)
+    return {"message": "Profile picture set successfully."}, 200
+
+
+@users.route("/get_profile_picture", methods=["POST"])
+@validate
+def get_profile_picture():
+    data = request.get_json()
+    user_id = data.get("user_id")
+
+    url = current_app.image_service.get_user_image_url(User(id=user_id, name="", hashed_password=""))
+    return {"url": url}, 200

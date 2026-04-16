@@ -13,7 +13,7 @@ components:
       bearerFormat: JWT
 
 security:
-  - bearerAuth: []
+  - bearerAuth: [ ]
 
 paths:
   /api/users/create:
@@ -22,7 +22,7 @@ paths:
       description: Creates a new user with a username and password.
       tags:
         - Users
-      security: []
+      security: [ ]
       requestBody:
         required: true
         content:
@@ -69,7 +69,7 @@ paths:
       description: Authenticates user and returns a JWT token.
       tags:
         - Users
-      security: []
+      security: [ ]
       requestBody:
         required: true
         content:
@@ -118,7 +118,7 @@ paths:
       description: "Responds with a simple OK"
       tags:
         - Status
-      security: []
+      security: [ ]
       responses:
         "200":
           description: "Service is healthy"
@@ -147,3 +147,84 @@ paths:
                   message:
                     type: string
                     example: "Hallo alice"
+  /api/users/set_profile_picture:
+    post:
+      summary: Set user profile picture
+      description: Uploads and sets the profile picture for the authenticated user.
+      tags:
+        - Users
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - image
+              properties:
+                image:
+                  type: string
+                  description: Base64 encoded image (data URL format)
+                  example: "data:image/jpeg;base64,/9j/4QC8RXhpZgAASUkqAAgAAAAGABIBAwABAAAAAQAAABoBBQABAAAAVgAAABsBBQABAAAAXgAAACgBAwABAAAAAgAAABMCAwABAAAAAQAAAGmHBAABAAAAZgAAAAAAAAALdwEA6AMAAAt3AQDoAwAABgAAkAcABAAAADAyMTABkQcABAAAAAECAwAAoAcABAAAADAxMDABoAMAAQAAAP//AAACoAQAAQAAADgAAAADoAQAAQAAADgAAAAAAAAA/9sAQwAGBAUGBQQGBgUGBwcGCAoQCgoJCQoUDg8MEBcUGBgXFBYWGh0lHxobIxwWFiAsICMmJykqKRkfLTAtKDAlKCko/9sAQwEHBwcKCAoTCgoTKBoWGigoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgo/8IAEQgAOAA4AwERAAIRAQMRAf/EABsAAAEEAwAAAAAAAAAAAAAAAAAEBQYHAQID/8QAGAEBAQEBAQAAAAAAAAAAAAAAAAECAwT/2gAMAwEAAhADEAAAAbUAAADU2I/KzrmVJY3HWHApTWcG8uTrK/TTbctWsgDpz6uWsyzNrnWUesgCjOrt83pWduKbpzqkZRPYEy5dbr6c1tgc4jc3HLmVJIa//8QAIhAAAgICAgICAwAAAAAAAAAAAgQDBQEGABARExIWICE0/9oACAEBAAEFAvy84+XHrhJPI7PX5Kxs/ckls8BK/bPPNTc9zWzW5Jh1jOR4GPkc8WYirMei0s2MtO9iEQyy1RDPrSJxk2BRNdgX7BoJ6zX/AOe+pAscNUr68ksMsJdVYRs1yS4qKdGAyDNRIScY1SM5KarjrIef/8QAJBEAAgIBAwIHAAAAAAAAAAAAAREAAjEQEvAgUQMhMDJBYXH/2gAIAQMBAT8B9BRfcAWYu0CcOHEg9QVAGZau2EbZft0bRiWqiolmXz0VMr5WfOc/PG9+ii+dQjVQl64guoS9f//EACIRAAIBAwIHAAAAAAAAAAAAAAERAAIgMRDwAxIhMDJhcf/aAAgBAgEBPwHsOOPUT1YekBcBcpsZzBUw43iU4sIlfit7394IVABuIPM7TTAFr//EADEQAAIBAgMECAUFAAAAAAAAAAECEQADBBIhECJBURMgMUJxgeHwBRQykcEjUmFiof/aAAgBAQAGPwLrROvLYVu3Zcd1NTQB6UfyVq5d+E4oG5Z3nWO1ftTPi1KXV7qCc3hRC4WNNCX9KxTYm7OIvwRPGJr5fDH9Zhq37fXbpQBIUHiaiZHA86wBs3M2Z17PKfz9qu3TO80wepDq7DiJ3vSlAu2ktP2G6+WB5xPlRuFQSrlG4jgR71/yrltxlZTEdRQfpFJc0XKhDHw9++N9+612VPPdA/FdLahMSOJ7G8aynDu/9rYzA1F226HkwjbewyJdbEsexJ8p4R78LVhNQgiee3K6hl5EVpa6MzO4am1imQcmSaZUYu7/AFPs/8QAJRABAAEDAwQCAwEAAAAAAAAAAREAITFBUYEQYXGRINGhscHw/9oACAEBAAE/IfkMiIgsrg4/T66Dh01rR4Nc1ABrGCd7NRgbEnuMMrduaTxedA67OWnJKW5+PtSeCJjAeNtvDFsCw3F2/wA+lVVZXo5Lj+0aaEOAqVg0wSQmzDcnN6ZRhnCzC3bD2rJaJExscEHGmPhFOccR3xHKYxTwMkFtuFeQRqDbMXkLgbF5khhQi1OLNymI+DL5JjTnei/IqMRCMzbWzie8VvMM+BYEo7SvVSBOC9Bt9qTH9Feh/aYHeVo99bF/1g3JLQS8/lho4CPJq1eXq1dszh4qdv0jFPaG0cUycdx9yUv1hYiYwBoZ99P/2gAMAwEAAgADAAAAEJJJLDIA3Yho5JZ/JGqspMpPr5//xAAlEQABBAECBgMBAAAAAAAAAAABABEh8EEQYSAxUZHR8YGxwaH/2gAIAQMBAT8Q4mzo/mYvdERh/fClQ7+DSiBlANjwhcKvP26Ejd7+Il5OhJBCACWRGPlFAMXd/dyFAsxbn64AElnkb4A3k9EF4Yt+2TYwN67YjpzUjsY4HCAeVv6EDpGCX83bZ0MEiLCBDMUYOnAQjUsHn59WGLh9QSThGwCGbtKJ0//EACURAQACAQIFBAMAAAAAAAAAAAEAESEx8BAgQVFhMHGx0YGR4f/aAAgBAgEBPxD0KdMy3b4jbSWmGKhpmYKRbY04IOsSFC4d66Sy2VW9+80X35Bwt9fb4cd5VAixe36+c1NDkoFNYMCZCvftvz5qG1h/ZXaX0ll1xITnp+N7zYFHFBwwGaCVw//EAB8QAQEBAAMAAwEBAQAAAAAAAAERIQAxQRBRYSBxgf/aAAgBAQABPxD+kmzIKCJOwWD7X18SdlWUpDNBKEJP0qKFkVFe1GHeC/jwgzg22lEqjUAWuuF5JQiMoyOmR1HYGyrF0AXSL7gLhS0ZEgrht4whoPDOZoY5MW6EdIKLIIld4ZsiqtV+/h6lJGdD6T0/HODjSEx+2cs/KIoojBAiBicCPCWqtAaU66lAECIeVSK9neGm4JAPkVnMok9a9qataLwpGJd5EKgm9DNEEKdBHipGhAvXXGekVwGpKKeeM+s/jVGgwE6j4VZXzKBSeDmBqrDF6Di4eQbAYoWSexaY1OBqWMC/QMQcAuRpIAlOSlQRKnXQHqhTirvBFEoIBKb/AJ8jiIhAsXUFMT8E4dAoUvYorKLLlh8zdnImaVYxB/5wps28NW6jpwEMIKPh84OztBrb59WtUmFU+8WWF9LVvQc//9k="
+
+      responses:
+        "200":
+          description: Profile picture set successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Profile picture set successfully.
+
+        "400":
+          description: Invalid input (e.g. missing image)
+
+        "401":
+          description: Unauthorized
+
+  /api/users/get_profile_picture:
+    post:
+      summary: Get user profile picture URL
+      description: Returns a temporary URL to access the user's profile picture.
+      tags:
+        - Users
+      security: [ ]
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user_id
+              properties:
+                user_id:
+                  type: integer
+                  example: 1
+                  description: ID of the user whose profile picture is requested
+
+      responses:
+        "200":
+          description: Successfully retrieved profile picture URL
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - url
+                properties:
+                  url:
+                    type: string
+                    format: uri
+                    example: "https://minio.local/images/profile-pictures/42?X-Amz-Algorithm=..."
+
+        "400":
+          description: Invalid request (missing or invalid user_id)
+
+        "404":
+          description: User or profile picture not found

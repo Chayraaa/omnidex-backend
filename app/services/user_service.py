@@ -1,5 +1,5 @@
 from app.domain_models.user import User
-from app.repositories.interfaces.user_repo_protocol import UserRepoProtocol
+from app.repositories.interfaces.storage.user_repo_protocol import UserRepoProtocol
 from app.services.password_service import PasswordService
 
 # The user service is completely decoupled from the database. It just interacts with repo.

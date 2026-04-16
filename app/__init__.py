@@ -6,13 +6,14 @@ import yaml
 from flask import Flask, request, jsonify, current_app
 from openapi_core.contrib.flask import FlaskOpenAPIRequest
 from openapi_core.exceptions import OpenAPIError
-from openapi_core.validation.request.exceptions import RequestBodyValidationError, InvalidRequestBody
+from openapi_core.validation.request.exceptions import InvalidRequestBody
 from openapi_core.validation.schemas.exceptions import InvalidSchemaValue
 from sqlalchemy import inspect
 
-from app.repositories.storage_repos.sql_user_repo import SqlUserRepo
+from app.repositories.storage.sql_user_repo import SqlUserRepo
 from app.repositories.units_of_work.sql_unit import SqlUnitOfWork
 from app.services.auth_service import AuthService
+from app.services.image_service import ImageService
 from app.services.password_service import PasswordService
 from app.extensions import db
 from openapi_core import OpenAPI
@@ -79,6 +80,7 @@ def setup_services(app: Flask):
     # A service could also take another service as a dependency. Though make sure to prevent circular dependencies.
     app.user_service = UserService(storage_unit_of_work.user_repo)
     app.auth_service = AuthService(storage_unit_of_work.user_repo)
+    app.image_service = ImageService(storage_unit_of_work.image_storage, storage_unit_of_work.image_repo)
 
 
 # Add all the routes here (see health as example)

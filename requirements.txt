@@ -6,4 +6,5 @@ passlib
 bcrypt==4.0.1
 PyJWT
 flask-swagger-ui
+minio
 openapi-core

@@ -1,5 +1,5 @@
 from app.repositories.interfaces.user_repo_protocol import UserRepoProtocol
-from app.repositories.storage_repos.mem_user_repo import MemUserRepo
+from app.repositories.storage.mem_user_repo import MemUserRepo
 
 # Example of a unit of work that uses in-memory storage. Can be deleted later
 class MemUnitOfWork:

@@ -1,7 +1,7 @@
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
-from app.services.password_service import PasswordService
+
 
 # Defines a user in the database. Will automatically create tables and interactions in flask.
 # Basically an easy way to avoid SQL lul.
@@ -12,9 +12,9 @@ class UserModel(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False, unique=True)
     password: Mapped[str] = mapped_column(nullable=False)
+    profile_picture_key: Mapped[str] = mapped_column(nullable=False, default="")
 
-    def set_password(self, password: str):
-        self.password = PasswordService.hash_password(password)
-
-    def check_password(self, password: str):
-        return PasswordService.verify_password(password, self.password)
+    cards: Mapped[list["CardModel"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
