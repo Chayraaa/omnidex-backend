@@ -28,11 +28,12 @@ Wenn ähnliche Nutzungen in engem Zusammenhang stehen, können Sie sie zusammenf
 Pflegen Sie das Protokoll möglichst zeitnah, damit die Git-Historie die Entwicklung nachvollziehbar macht. Nutzen Sie
 KI, um Ihren Promtverlauf entsprechnd dieser Vorlage festzuhalten.
 
-| Datum      | Anwender der KI | Werkzeug | Nutzung kurz beschrieben                                                                               | Übernahme und Anpassung kurz beschrieben                                                          |
-|------------|-----------------|----------|--------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
-| 2026-04-04 | Karla           | ChatGPT  | SQLAlchemy + Flask App-Init, Tabellen-Erstellung, App Context, Sequence/Unique Issues                  | Beispiele für Standardnutzung, Bug fixes nach Implementierung                                     |
-| 2026-04-13 | Karla           | ChatGPT  | Hexagonale Architektur + Flask Design diskutiert (Repository Pattern, Protocols, Dependency Injection) | Refactoring-Ansatz entwickelt: Entkopplung von DB-Zugriffen über Interfaces/Protocols             |
-| 2026-04-14 | Karla           | ChatGPT  | Konzept für globale Validierung / API Setup-Struktur in Flask                                          | Architekturentscheidung: Validierung zentral durch openAPI in App-Setup integriert statt verteilt |
+| Datum      | Anwender der KI | Werkzeug | Nutzung kurz beschrieben                                                                                      | Übernahme und Anpassung kurz beschrieben                                                                      |
+|------------|-----------------|----------|---------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
+| 2026-04-04 | Karla           | ChatGPT  | SQLAlchemy + Flask App-Init, Tabellen-Erstellung, App Context, Sequence/Unique Issues                         | Beispiele für Standardnutzung, Bug fixes nach Implementierung                                                 |
+| 2026-04-13 | Karla           | ChatGPT  | Hexagonale Architektur + Flask Design diskutiert (Repository Pattern, Protocols, Dependency Injection)        | Refactoring-Ansatz entwickelt: Entkopplung von DB-Zugriffen über Interfaces/Protocols                         |
+| 2026-04-14 | Karla           | ChatGPT  | Konzept für globale Validierung / API Setup-Struktur in Flask                                                 | Architekturentscheidung: Validierung zentral durch openAPI in App-Setup integriert statt verteilt             |
+| 2026-04-16 | Karla           | ChatGPT  | MinIO Integration + presigned URL Probleme in Docker (localhost vs. container network), Image Delivery Design | Umstellung auf Backend-Proxy für Bilder (Flask Route statt presigned URLs), URL-Handling + Encoding angepasst |
 
 ## Optionale ergänzende Hinweise
 

@@ -30,9 +30,10 @@ class MinioImageStorage:
 
         return key
 
-    def get_url(self, key: str) -> str:
-        return self.client.presigned_get_object(
-            self.bucket,
-            key,
-            expires=timedelta(minutes=10)
-        )
+    def get_image(self, key: str):
+        response = self.client.get_object(self.bucket, key)
+        try:
+            return response.read()
+        finally:
+            response.close()
+            response.release_conn()

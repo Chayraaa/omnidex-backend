@@ -80,7 +80,8 @@ def setup_services(app: Flask):
     # A service could also take another service as a dependency. Though make sure to prevent circular dependencies.
     app.user_service = UserService(storage_unit_of_work.user_repo)
     app.auth_service = AuthService(storage_unit_of_work.user_repo)
-    app.image_service = ImageService(storage_unit_of_work.image_storage, storage_unit_of_work.image_repo)
+    app.image_service = ImageService(storage_unit_of_work.image_storage, storage_unit_of_work.image_repo,
+                                     base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"))
 
 
 # Add all the routes here (see health as example)
@@ -91,6 +92,8 @@ def setup_routes(app: Flask):
     app.register_blueprint(users, url_prefix="/api/users")
     from .routes.scan import scan
     app.register_blueprint(scan, url_prefix="/api/scan")
+    from .routes.image import image
+    app.register_blueprint(image, url_prefix="/api/image")
 
 
 ########################

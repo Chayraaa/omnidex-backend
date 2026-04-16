@@ -112,6 +112,7 @@ paths:
                   message:
                     type: string
                     example: Invalid credentials
+
   /api/status/health:
     get:
       summary: "Health check"
@@ -130,6 +131,7 @@ paths:
                   message:
                     type: string
                     example: "OK"
+
   /api/scan/login_test:
     get:
       summary: "Login test"
@@ -147,6 +149,7 @@ paths:
                   message:
                     type: string
                     example: "Hallo alice"
+
   /api/users/set_profile_picture:
     post:
       summary: Set user profile picture
@@ -221,10 +224,30 @@ paths:
                   url:
                     type: string
                     format: uri
-                    example: "https://minio.local/images/profile-pictures/42?X-Amz-Algorithm=..."
+                    example: "https://127.0.0.1/images/profile-pictures/42?X-Amz-Algorithm=..."
 
         "400":
           description: Invalid request (missing or invalid user_id)
 
         "404":
           description: User or profile picture not found
+
+  /api/image/{key}:
+    get:
+      summary: Get image by key
+      security: [ ]
+      parameters:
+        - in: path
+          name: key
+          required: true
+          schema:
+            type: string
+          description: Path to the image in storage
+      responses:
+        '200':
+          description: Image file
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
