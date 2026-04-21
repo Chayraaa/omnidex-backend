@@ -8,3 +8,5 @@ PyJWT
 flask-swagger-ui
 minio
 openapi-core
+requests
+authlib

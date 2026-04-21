@@ -1,7 +1,7 @@
 from datetime import timedelta
 from typing import BinaryIO
 
-from minio import Minio
+from minio import Minio, S3Error
 
 
 class MinioImageStorage:
@@ -16,8 +16,12 @@ class MinioImageStorage:
         self._ensure_bucket()
 
     def _ensure_bucket(self):
-        if not self.client.bucket_exists(self.bucket):
-            self.client.make_bucket(self.bucket)
+        try:
+            if not self.client.bucket_exists(self.bucket):
+                self.client.make_bucket(self.bucket)
+        except S3Error as e:
+            if e.code != "BucketAlreadyOwnedByYou":
+                raise
 
     def save_image(self, key: str, image_data: BinaryIO) -> str:
         self.client.put_object(

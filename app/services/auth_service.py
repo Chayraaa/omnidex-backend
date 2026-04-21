@@ -6,9 +6,9 @@ class AuthService:
     def __init__(self, user_repo: UserRepoProtocol):
         self.repo = user_repo
 
-    def authenticate_user(self, name: str, password: str) -> str | None:
-        user = self.repo.get_user_by_name(name)
-        if not user:
+    def authenticate_user(self, email: str, password: str) -> str | None:
+        user = self.repo.get_user_by_email(email)
+        if not user or user.oauth != "local":
             return None
         if PasswordService.verify_password(password, user.hashed_password):
             return PasswordService.generate_token(user.id)

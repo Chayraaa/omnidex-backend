@@ -19,7 +19,7 @@ paths:
   /api/users/create:
     post:
       summary: Create a new user
-      description: Creates a new user with a username and password.
+      description: Creates a new user with a username, email and password.
       tags:
         - Users
       security: [ ]
@@ -33,11 +33,16 @@ paths:
                 name:
                   type: string
                   example: alice
+                email:
+                  type: string
+                  format: email
+                  example: alice@example.com
                 password:
                   type: string
                   example: securePassword123
               required:
                 - name
+                - email
                 - password
 
       responses:
@@ -77,14 +82,15 @@ paths:
             schema:
               type: object
               properties:
-                name:
+                email:
                   type: string
-                  example: alice
+                  format: email
+                  example: alice@example.com
                 password:
                   type: string
                   example: securePassword123
               required:
-                - name
+                - email
                 - password
 
       responses:
@@ -112,6 +118,51 @@ paths:
                   message:
                     type: string
                     example: Invalid credentials
+
+  /api/users/google/login:
+    get:
+      summary: Redirect to Google OAuth
+      description: Redirects user to Google login page.
+      tags:
+        - Google OAuth
+      security: [ ]
+      responses:
+        "302":
+          description: Redirect to Google OAuth
+
+  /api/users/google/callback:
+    get:
+      summary: Google OAuth callback
+      description: Handles Google OAuth response and returns JWT.
+      tags:
+        - Google OAuth
+      security: [ ]
+      responses:
+        "200":
+          description: Login successful via Google
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: eyJhbGciOi...
+        "401":
+          description: OAuth authentication failed
+        "400":
+          description: OAuth login failed (e.g. invalid or mismatching state / CSRF protection triggered)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: oauth_state_mismatch
+                  message:
+                    type: string
+                    example: Login session expired or invalid state. Please try again.
 
   /api/status/health:
     get:
@@ -189,42 +240,34 @@ paths:
         "401":
           description: Unauthorized
 
-  /api/users/get_profile_picture:
-    post:
+  /api/users/get_profile_picture/{user_id}:
+    get:
       summary: Get user profile picture URL
       description: Returns a temporary URL to access the user's profile picture.
       tags:
         - Users
       security: [ ]
 
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - user_id
-              properties:
-                user_id:
-                  type: integer
-                  example: 1
-                  description: ID of the user whose profile picture is requested
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID of the user whose profile picture is requested
 
       responses:
         "200":
-          description: Successfully retrieved profile picture URL
+          description: Profile picture URL returned successfully
           content:
             application/json:
               schema:
                 type: object
-                required:
-                  - url
                 properties:
                   url:
                     type: string
-                    format: uri
-                    example: "https://127.0.0.1/images/profile-pictures/42?X-Amz-Algorithm=..."
+                    example: https://example.com/image.jpg
 
         "400":
           description: Invalid request (missing or invalid user_id)

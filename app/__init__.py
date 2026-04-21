@@ -3,6 +3,7 @@ import os
 from functools import wraps
 
 import yaml
+from authlib.integrations.flask_client import OAuth
 from flask import Flask, request, jsonify, current_app
 from openapi_core.contrib.flask import FlaskOpenAPIRequest
 from openapi_core.exceptions import OpenAPIError
@@ -10,17 +11,17 @@ from openapi_core.validation.request.exceptions import InvalidRequestBody
 from openapi_core.validation.schemas.exceptions import InvalidSchemaValue
 from sqlalchemy import inspect
 
-from app.repositories.storage.sql_user_repo import SqlUserRepo
 from app.repositories.units_of_work.sql_unit import SqlUnitOfWork
 from app.services.auth_service import AuthService
 from app.services.image_service import ImageService
 from app.services.password_service import PasswordService
+from app.services.google_oauth_service import GoogleOauthService
+from app.services.user_service import UserService
 from app.extensions import db
 from openapi_core import OpenAPI
 
 # Add all the db database_models here
 from app.database_models.user_model import UserModel
-from app.services.user_service import UserService
 
 # Open API file path
 api_url = "/static/omnidex-api.yaml"
@@ -40,6 +41,22 @@ def setup_openapi(app: Flask):
         spec = yaml.safe_load(f)
 
     app.openapi_spec = OpenAPI.from_dict(spec)
+
+
+def setup_oauth(app: Flask):
+    app.config["SECRET_KEY"] = os.getenv("JWT_SECRET")
+    oauth = OAuth(app)
+
+    google = oauth.register(
+        name='google',
+        client_id=os.getenv("GOOGLE_CLIENT_ID"),
+        client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+        server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+        client_kwargs={
+            "scope": "openid email profile"
+        }
+    )
+    app.google = google
 
 
 def setup_database(app: Flask):
@@ -82,6 +99,7 @@ def setup_services(app: Flask):
     app.auth_service = AuthService(storage_unit_of_work.user_repo)
     app.image_service = ImageService(storage_unit_of_work.image_storage, storage_unit_of_work.image_repo,
                                      base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"))
+    app.google_oauth_service = GoogleOauthService(storage_unit_of_work.user_repo)
 
 
 # Add all the routes here (see health as example)
@@ -181,6 +199,7 @@ def create_app():
 
     setup_logging(app)
     setup_openapi(app)
+    setup_oauth(app)
     setup_database(app)
     setup_services(app)
     setup_routes(app)

@@ -1,4 +1,5 @@
-from flask import Blueprint, request, current_app
+from authlib.integrations.base_client import MismatchingStateError
+from flask import Blueprint, request, current_app, url_for
 
 from app import validate, login_required
 from app.domain_models.user import User
@@ -12,10 +13,11 @@ users = Blueprint("users", __name__)
 @validate
 def create_user():
     data = request.get_json()
+    email = (data.get("email") or "").strip().replace(" ", "")
     name = data.get("name")
     password = data.get("password")
 
-    if current_app.user_service.create_user(name, password):
+    if current_app.user_service.create_user(name, email, password):
         return {"message": "User created successfully."}, 201
     else:
         return {"message": "User already exists."}, 400
@@ -27,10 +29,10 @@ def create_user():
 @validate
 def login():
     data = request.get_json()
-    name = data.get("name")
+    email = (data.get("email") or "").strip().replace(" ", "")
     password = data.get("password")
 
-    token = current_app.auth_service.authenticate_user(name, password)
+    token = current_app.auth_service.authenticate_user(email, password)
     if not token:
         return {"message": "Invalid credentials."}, 401
 
@@ -39,6 +41,35 @@ def login():
         "token": token
     }, 200
 
+@users.route("/google/login", methods=["GET"])
+@validate
+def google_login():
+    redirect_uri = url_for("users.google_callback", _external=True)
+    return current_app.google.authorize_redirect(redirect_uri)
+
+@users.route("/google/callback", methods=["GET"])
+@validate
+def google_callback():
+    try:
+        token = current_app.google.authorize_access_token()
+    except MismatchingStateError:
+        return {
+            "error": "oauth_state_mismatch",
+            "message": "Login session expired or invalid state. Please try again."
+        }, 400
+
+    if not token:
+        return {"error": "Failed to authorize with Google"}, 400
+
+    user_info = token.get("userinfo")
+    if not user_info:
+        return {"error": "Failed to fetch user info from Google"}, 400
+
+    jwt = current_app.google_oauth_service.authenticate_user(user_info)
+    if not jwt:
+        return {"error": "Failed to authenticate user"}, 400
+
+    return {"message": "Login successful. Use token for authentication.", "token": jwt}, 200
 
 @users.route("/set_profile_picture", methods=["POST"])
 @validate
@@ -51,11 +82,8 @@ def set_profile_picture(user: User):
     return {"message": "Profile picture set successfully."}, 200
 
 
-@users.route("/get_profile_picture", methods=["POST"])
+@users.route("/get_profile_picture/<int:user_id>", methods=["GET"])
 @validate
-def get_profile_picture():
-    data = request.get_json()
-    user_id = data.get("user_id")
-
+def get_profile_picture(user_id: int):
     url = current_app.image_service.get_user_image_url(User(id=user_id, name="", hashed_password=""))
     return {"url": url}, 200

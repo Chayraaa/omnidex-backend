@@ -26,20 +26,20 @@ class ImageService:
         converted_image: BinaryIO = base64_to_binary_io(image_base64)
         self.storage.save_image(key, converted_image)
         if is_profile_picture:
-            self.image_repo.save_user_image(key, user.id)
+            self.image_repo.save_user_image(f"{self.base_url}/{self.image_path}/{key}", user.id)
         else:
-            self.image_repo.save_card_image(key, user.id)
+            self.image_repo.save_card_image(f"{self.base_url}/{self.image_path}/{key}", user.id)
         return True
 
     def get_user_image_url(self, user: User) -> str:
         if not self.image_repo.has_profile_picture(user.id):
             return ""
         key = self.image_repo.get_user_key_by_id(user.id)
-        return f"{self.base_url}/{self.image_path}/{key}"
+        return f"{key}"
 
     def get_card_image_url(self, user: User) -> list[str]:
         keys = self.image_repo.get_card_keys_by_user_id(user.id)
-        urls = [f"{self.base_url}/{self.image_path}/{key}" for key in keys]
+        urls = [f"{key}" for key in keys]
         return urls
 
     def get_image_stream(self, key: str):

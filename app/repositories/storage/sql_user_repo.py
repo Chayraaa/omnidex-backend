@@ -11,16 +11,28 @@ class SqlUserRepo:
         db_user = db.session.get(UserModel, user_id)
         if not db_user:
             return None
-        return User(id=db_user.id, name=db_user.name, hashed_password=db_user.password)
+        return User(id=db_user.id, name=db_user.name, hashed_password=db_user.password, oauth=db_user.oauth_method,
+                    profile_picture_key=db_user.profile_picture_key, email=db_user.email)
 
-    def get_user_by_name(self, name: str) -> User | None:
-        db_user = db.session.query(UserModel).filter_by(name=name).first()
+    def get_user_by_email(self, email: str) -> User | None:
+        db_user = db.session.query(UserModel).filter_by(email=email).first()
         if not db_user:
             return None
-        return User(id=db_user.id, name=db_user.name, hashed_password=db_user.password)
+        return User(id=db_user.id, name=db_user.name, hashed_password=db_user.password, oauth=db_user.oauth_method,
+                    profile_picture_key=db_user.profile_picture_key, email=db_user.email)
 
-    def create_user(self, name: str, password: str) -> bool:
-        db_user = UserModel(name=name, password=password)
+    def create_user(self, name: str, password: str, email: str, oauth="local") -> bool:
+        db_user = UserModel(name=name, password=password, oauth_method=oauth, email=email)
         db.session.add(db_user)
+        db.session.commit()
+        return True
+
+    def update_user(self, user: User) -> bool:
+        db_user = db.session.get(UserModel, user.id)
+        db_user.name = user.name
+        db_user.password = user.hashed_password
+        db_user.profile_picture_key = user.profile_picture_key
+        db_user.oauth_method = user.oauth
+        db_user.email = user.email
         db.session.commit()
         return True
