@@ -84,6 +84,34 @@ components:
         - MINERAL
         - FOOD
 
+    user:
+      type: object
+      required:
+        - id
+        - name
+        - friends
+        - pictureURL
+      properties:
+        id:
+          type: integer
+          example: 42
+        name:
+          type: string
+          example: Alice
+        friends:
+          type: array
+          description: Array of friend user IDs
+          items:
+            type: integer
+            example: 17
+          example:
+            - 17
+            - 23
+            - 91
+        pictureURL:
+          type: string
+          example: https://example.com/profile.jpg
+
 security:
   - bearerAuth: [ ]
 
@@ -562,5 +590,229 @@ paths:
           description: Invalid parameters
         "404":
           description: User or category not found
+        "500":
+          description: Internal server error
+
+  # And now.. more changes meow...
+
+  /api/users/{userId}:
+
+    get:
+      summary: Retrieve a user by userId
+      tags:
+        - Users
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/user"
+        "400":
+          description: Invalid user ID
+        "404":
+          description: User not found
+        "500":
+          description: Internal server error
+
+
+    delete:
+      summary: Delete a user by userId
+      tags:
+        - Users
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: User deleted successfully
+        "400":
+          description: Invalid request
+        "401":
+          description: Unauthorized. You are not logged in
+        "403":
+          description: Forbidden. You are not said user.
+        "404":
+          description: User not found
+        "500":
+          description: Internal server error
+
+
+
+  /api/users/friends/{userId}:
+    get:
+      summary: Retrieve all friend IDs of a user
+      tags:
+        - Friends
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Friend IDs successfully retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+                example:
+                  - 17
+                  - 23
+                  - 91
+        "400":
+          description: Invalid user ID
+        "404":
+          description: User not found
+        "500":
+          description: Internal server error
+
+
+
+  /api/users/friends/add/{userId}:
+    post:
+      summary: Add friend
+      tags:
+        - Friends
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Friend added successfully
+        "400":
+          description: Invalid request
+        "401":
+          description: Unauthorized. You are not logged in
+        "404":
+          description: User not found
+        "409":
+          description: Friendship already exists
+        "422":
+          description: Invalid friend operation (e.g. adding yourself)
+        "500":
+          description: Internal server error
+
+
+
+  /api/users/friends/remove/{userId}:
+    post:
+      summary: Remove friend
+      tags:
+        - Friends
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Friend removed successfully
+        "400":
+          description: Invalid request
+        "401":
+          description: Unauthorized
+        "404":
+          description: Friendship or user not found
+        "500":
+          description: Internal server error
+
+
+
+  /api/users/achievements/{userId}:
+    get:
+      summary: Retrieve user achievements
+      tags:
+        - Achievements
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Achievements retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  example: First Discovery
+        "404":
+          description: User not found
+        "500":
+          description: Internal server error
+
+
+
+  /api/users/edit:
+    put:
+      summary: Edit current user profile
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/user"
+      responses:
+        "200":
+          description: User updated successfully
+        "401":
+          description: Unauthorized. You are not logged in.
+        "403":
+          description: Forbidden. You are not said user or lack the permission to edit.
+        "409":
+          description: Conflict (e.g. duplicate username)
+        "422":
+          description: Validation failed
+        "500":
+          description: Internal server error
+
+
+
+  /api/users/experience/{userId}:
+    get:
+      summary: Retrieve user experience
+      tags:
+        - Users
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Experience successfully retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  experience:
+                    type: integer
+                    example: 4200
+        "404":
+          description: User not found
         "500":
           description: Internal server error
