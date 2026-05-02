@@ -1,0 +1,13 @@
+from typing import Protocol
+from app.domain_models.achievement import Achievement
+
+
+class AchievementRepoProtocol(Protocol):
+
+    def get_achievement(self, achievement_id: int) -> Achievement | None: ...
+
+    def get_achievement_by_name(self, name: str) -> Achievement | None: ...
+
+    def create_achievement(self, name: str, description: str | None) -> bool: ...
+
+    def update_achievement(self, achievement: Achievement) -> bool: ...

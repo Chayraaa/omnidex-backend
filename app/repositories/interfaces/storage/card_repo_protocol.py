@@ -1,0 +1,13 @@
+from typing import Protocol
+from app.domain_models.card import Card
+
+
+class CardRepoProtocol(Protocol):
+
+    def get_card(self, card_id: int) -> Card | None: ...
+
+    def get_card_by_name(self, name: str) -> Card | None: ...
+
+    def create_card(self, name: str, image_key: str, user_id: int, category_id: int) -> bool: ...
+
+    def update_card(self, card: Card) -> bool: ...

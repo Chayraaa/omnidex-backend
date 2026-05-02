@@ -15,8 +15,14 @@ class UserModel(db.Model):
     email: Mapped[str] = mapped_column(nullable=False, unique=True)
     oauth_method: Mapped[str] = mapped_column(nullable=False, default="local")
     profile_picture_key: Mapped[str] = mapped_column(nullable=False, default="")
+    friend_code: Mapped[str] = mapped_column(nullable=False, unique=True)
 
     cards: Mapped[list["CardModel"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan"
+    )
+
+    user_achievements: Mapped[list["UserAchievementModel"]] = relationship(
+    "UserAchievementModel",
+    back_populates="user"
     )

@@ -9,3 +9,4 @@ class User:
     oauth: str = "local"
     profile_picture_key: str = ""
     email: str = ""
+    friend_code: str = ""
