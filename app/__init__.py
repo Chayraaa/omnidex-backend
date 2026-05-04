@@ -112,6 +112,8 @@ def setup_routes(app: Flask):
     app.register_blueprint(scan, url_prefix="/api/scan")
     from .routes.image import image
     app.register_blueprint(image, url_prefix="/api/image")
+    from .routes.wiki import wiki
+    app.register_blueprint(wiki, url_prefix="/api/wiki")
 
 
 ########################
