@@ -17,11 +17,13 @@ from app.services.image_service import ImageService
 from app.services.password_service import PasswordService
 from app.services.google_oauth_service import GoogleOauthService
 from app.services.user_service import UserService
+from app.repositories.external.wiki_repo import WikiRepo
 from app.extensions import db
 from openapi_core import OpenAPI
 
 # Add all the db database_models here
 from app.database_models.user_model import UserModel
+from app.services.wiki_service import WikiService
 
 # Open API file path
 api_url = "/static/omnidex-api.yaml"
@@ -100,6 +102,7 @@ def setup_services(app: Flask):
     app.image_service = ImageService(storage_unit_of_work.image_storage, storage_unit_of_work.image_repo,
                                      base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"))
     app.google_oauth_service = GoogleOauthService(storage_unit_of_work.user_repo)
+    app.wiki_service = WikiService(WikiRepo())
 
 
 # Add all the routes here (see health as example)
