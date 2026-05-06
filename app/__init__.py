@@ -16,8 +16,11 @@ from app.services.auth_service import AuthService
 from app.services.image_service import ImageService
 from app.services.password_service import PasswordService
 from app.services.google_oauth_service import GoogleOauthService
+from app.services.recognition_service import RecognitionService
+from app.services.scan_service import ScanService
 from app.services.user_service import UserService
 from app.repositories.external.wiki_repo import WikiRepo
+from app.repositories.external.lisa_api_client import LisaApiClient
 from app.extensions import db
 from openapi_core import OpenAPI
 
@@ -103,6 +106,9 @@ def setup_services(app: Flask):
                                      base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"))
     app.google_oauth_service = GoogleOauthService(storage_unit_of_work.user_repo)
     app.wiki_service = WikiService(WikiRepo())
+    lisa_adapter = LisaApiClient()
+    app.recognition_service = RecognitionService(lisa_adapter)
+    app.scan_service = ScanService(app.recognition_service, app.wiki_service)
 
 
 # Add all the routes here (see health as example)
