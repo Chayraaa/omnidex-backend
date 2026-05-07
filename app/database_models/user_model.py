@@ -23,6 +23,25 @@ class UserModel(db.Model):
     )
 
     user_achievements: Mapped[list["UserAchievementModel"]] = relationship(
-    "UserAchievementModel",
-    back_populates="user"
+        "UserAchievementModel",
+        back_populates="user"
     )
+
+    refresh_tokens = relationship(
+        "RefreshTokenModel",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
+    sent_friendships: Mapped[list["FriendsModel"]] = relationship(
+        "FriendsModel",
+        foreign_keys="FriendsModel.user_id",
+        back_populates="user",
+    )
+
+    received_friendships: Mapped[list["FriendsModel"]] = relationship(
+        "FriendsModel",
+        foreign_keys="FriendsModel.friend_id",
+        back_populates="friend",
+    )
+

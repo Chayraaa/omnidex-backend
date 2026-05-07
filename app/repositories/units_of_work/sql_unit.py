@@ -1,8 +1,10 @@
 from app.repositories.interfaces.storage.image_repo_protocol import ImageRepoProtocol
 from app.repositories.interfaces.storage.image_storage_protocol import ImageStorageProtocol
+from app.repositories.interfaces.storage.refresh_token_repo_protocol import RefreshTokenRepositoryProtocol
 from app.repositories.interfaces.storage.user_repo_protocol import UserRepoProtocol
 from app.repositories.storage.minio_image_storage import MinioImageStorage
 from app.repositories.storage.sql_image_repo import SqlImageRepo
+from app.repositories.storage.sql_refresh_token_repo import SqlRefreshTokenRepo
 from app.repositories.storage.sql_user_repo import SqlUserRepo
 
 
@@ -14,3 +16,4 @@ class SqlUnitOfWork:
         self.user_repo: UserRepoProtocol = SqlUserRepo()
         self.image_repo: ImageRepoProtocol = SqlImageRepo()
         self.image_storage: ImageStorageProtocol = MinioImageStorage("images")
+        self.refresh_token_repo: RefreshTokenRepositoryProtocol = SqlRefreshTokenRepo()
