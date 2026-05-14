@@ -34,6 +34,11 @@ KI, um Ihren Promtverlauf entsprechnd dieser Vorlage festzuhalten.
 | 2026-04-13 | Karla           | ChatGPT  | Hexagonale Architektur + Flask Design diskutiert (Repository Pattern, Protocols, Dependency Injection)        | Refactoring-Ansatz entwickelt: Entkopplung von DB-Zugriffen über Interfaces/Protocols                         |
 | 2026-04-14 | Karla           | ChatGPT  | Konzept für globale Validierung / API Setup-Struktur in Flask                                                 | Architekturentscheidung: Validierung zentral durch openAPI in App-Setup integriert statt verteilt             |
 | 2026-04-16 | Karla           | ChatGPT  | MinIO Integration + presigned URL Probleme in Docker (localhost vs. container network), Image Delivery Design | Umstellung auf Backend-Proxy für Bilder (Flask Route statt presigned URLs), URL-Handling + Encoding angepasst |
+| 2026-05-14 | Pratham         | ChatGPT | Unterstützung bei Planung der Service-Struktur für den Scan-Flow (Orchestrierung statt Logik im Controller) | Strukturvorschläge geprüft und manuell umgesetzt: `ScanService` als Orchestrator, Controller weiterhin schlank |
+| 2026-05-14 | Pratham         | ChatGPT | Unterstützung bei Design und Fehlerbehandlung für `RecognitionService` + LISA-Anbindung                      | Bestehende Trennung beibehalten (Recognition nur Bilderkennung), Fehlerpfade getestet und projektkonform angepasst |
+| 2026-05-14 | Pratham         | ChatGPT | Hilfe bei Entwurf von `SummaryService`/`LisaSummaryApiClient` inkl. Fallback-Idee                            | Implementierung eigenständig integriert, Prompt/Antwortformat und Fallback-Verhalten fachlich geprüft          |
+| 2026-05-14 | Pratham         | ChatGPT | Unterstützung bei Persistenz-Erweiterung (`card_summary`, Card-Insert, Image-Referenz, DB-Schema-Sync)      | Vorschläge selektiv übernommen, SQLAlchemy-Modelle/Repos manuell nachgezogen und gegen Laufzeit geprüft        |
+| 2026-05-14 | Pratham         | ChatGPT | Hilfe bei API/DTO/Test-Anpassungen (Scan-Response, OpenAPI, Unit-Tests, Troubleshooting)                    | Antworten/Tests manuell verifiziert, reale End-to-End Calls ausgeführt und nur passende Teile übernommen       |
 
 ## Optionale ergänzende Hinweise
 
