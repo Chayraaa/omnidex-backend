@@ -10,6 +10,7 @@ from openapi_core.exceptions import OpenAPIError
 from openapi_core.validation.request.exceptions import InvalidRequestBody
 from openapi_core.validation.schemas.exceptions import InvalidSchemaValue
 from sqlalchemy import inspect
+from sqlalchemy import text
 
 from app.repositories.units_of_work.sql_unit import SqlUnitOfWork
 from app.services.auth_service import AuthService
@@ -18,9 +19,11 @@ from app.services.password_service import PasswordService
 from app.services.google_oauth_service import GoogleOauthService
 from app.services.recognition_service import RecognitionService
 from app.services.scan_service import ScanService
+from app.services.summary_service import SummaryService
 from app.services.user_service import UserService
 from app.repositories.external.wiki_repo import WikiRepo
 from app.repositories.external.lisa_api_client import LisaApiClient
+from app.repositories.external.lisa_summary_api_client import LisaSummaryApiClient
 from app.extensions import db
 from openapi_core import OpenAPI
 
@@ -84,6 +87,42 @@ def setup_database(app: Flask):
             else:
                 app.logger.info(f"Table {table_name} already exists")
 
+        # Lightweight schema sync for environments without migrations.
+        # Adds new columns when the table already exists.
+        if inspector.has_table("cards"):
+            existing = {col["name"] for col in inspector.get_columns("cards")}
+            if "card_summary" not in existing:
+                try:
+                    db.session.execute(text("ALTER TABLE cards ADD COLUMN card_summary VARCHAR"))
+                    db.session.commit()
+                    app.logger.info("Added cards.card_summary column")
+                except Exception:
+                    db.session.rollback()
+
+            unique_constraints = inspector.get_unique_constraints("cards")
+            has_global_name_unique = any(constraint.get("column_names") == ["name"] for constraint in unique_constraints)
+            has_user_name_unique = any(
+                constraint.get("column_names") == ["user_id", "name"] for constraint in unique_constraints
+            )
+
+            if has_global_name_unique:
+                try:
+                    db.session.execute(text("ALTER TABLE cards DROP CONSTRAINT IF EXISTS cards_name_key"))
+                    db.session.commit()
+                    app.logger.info("Dropped legacy cards.name unique constraint")
+                except Exception:
+                    db.session.rollback()
+
+            if not has_user_name_unique:
+                try:
+                    db.session.execute(
+                        text("ALTER TABLE cards ADD CONSTRAINT uq_cards_user_id_name UNIQUE (user_id, name)")
+                    )
+                    db.session.commit()
+                    app.logger.info("Added cards(user_id, name) unique constraint")
+                except Exception:
+                    db.session.rollback()
+
 
 ########################
 # REGULAR EDITING HERE #
@@ -107,8 +146,17 @@ def setup_services(app: Flask):
     app.google_oauth_service = GoogleOauthService(storage_unit_of_work.user_repo)
     app.wiki_service = WikiService(WikiRepo())
     lisa_adapter = LisaApiClient()
+    lisa_summary_adapter = LisaSummaryApiClient()
     app.recognition_service = RecognitionService(lisa_adapter)
-    app.scan_service = ScanService(app.recognition_service, app.wiki_service)
+    app.summary_service = SummaryService(lisa_summary_adapter)
+    app.scan_service = ScanService(
+        app.recognition_service,
+        app.wiki_service,
+        app.summary_service,
+        storage_unit_of_work.image_storage,
+        storage_unit_of_work.card_repo,
+        base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"),
+    )
 
 
 # Add all the routes here (see health as example)

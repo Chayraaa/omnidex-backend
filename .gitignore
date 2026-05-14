@@ -15,6 +15,10 @@ __pycache__/
 .env
 .env.*
 !.env.example
+.envrc
+.secrets/
+secrets/
+*.secret
 *.pem
 *.key
 *.crt

@@ -9,7 +9,7 @@ from app.repositories.interfaces.storage.image_storage_protocol import ImageStor
 
 
 def base64_to_binary_io(data_url: str):
-    header, b64_data = data_url.split(",", 1)
+    _, b64_data = data_url.split(",", 1)
     file_bytes = base64.b64decode(b64_data)
     return BytesIO(file_bytes)
 
@@ -22,13 +22,12 @@ class ImageService:
         self.image_path = image_path.lstrip("/").rstrip("/")
 
     def save_image(self, user: User, image_base64: str, is_profile_picture: bool = False) -> bool:
-        key = f"{'profile_pictures' if is_profile_picture else 'cards'}/{user.id}/{uuid4()}.jpeg"
+        extension = _infer_data_url_extension(image_base64)
+        key = f"{'profile_pictures' if is_profile_picture else 'cards'}/{user.id}/{uuid4()}.{extension}"
         converted_image: BinaryIO = base64_to_binary_io(image_base64)
         self.storage.save_image(key, converted_image)
         if is_profile_picture:
             self.image_repo.save_user_image(f"{self.base_url}/{self.image_path}/{key}", user.id)
-        else:
-            self.image_repo.save_card_image(f"{self.base_url}/{self.image_path}/{key}", user.id)
         return True
 
     def get_user_image_url(self, user: User) -> str:
@@ -44,3 +43,14 @@ class ImageService:
 
     def get_image_stream(self, key: str):
         return self.storage.get_image(key)
+
+
+def _infer_data_url_extension(data_url: str) -> str:
+    if not isinstance(data_url, str):
+        return "jpeg"
+    header = data_url.split(",", 1)[0].lower()
+    if "image/png" in header:
+        return "png"
+    if "image/webp" in header:
+        return "webp"
+    return "jpeg"
