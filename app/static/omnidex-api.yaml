@@ -596,7 +596,6 @@ paths:
   # And now.. more changes meow...
 
   /api/users/{userId}:
-
     get:
       summary: Retrieve a user by userId
       tags:
@@ -620,7 +619,6 @@ paths:
           description: User not found
         "500":
           description: Internal server error
-
 
     delete:
       summary: Delete a user by userId
@@ -646,7 +644,35 @@ paths:
         "500":
           description: Internal server error
 
-
+    put:
+      summary: Edit current user profile
+      tags:
+        - Users
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/user"
+      responses:
+        "200":
+          description: User updated successfully
+        "401":
+          description: Unauthorized. You are not logged in.
+        "403":
+          description: Forbidden. You are not said user or lack the permission to edit.
+        "409":
+          description: Conflict (e.g. duplicate username)
+        "422":
+          description: Validation failed
+        "500":
+          description: Internal server error
 
   /api/users/friends/{userId}:
     get:
@@ -760,35 +786,6 @@ paths:
           description: User not found
         "500":
           description: Internal server error
-
-
-
-  /api/users/edit:
-    put:
-      summary: Edit current user profile
-      tags:
-        - Users
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/user"
-      responses:
-        "200":
-          description: User updated successfully
-        "401":
-          description: Unauthorized. You are not logged in.
-        "403":
-          description: Forbidden. You are not said user or lack the permission to edit.
-        "409":
-          description: Conflict (e.g. duplicate username)
-        "422":
-          description: Validation failed
-        "500":
-          description: Internal server error
-
-
 
   /api/users/experience/{userId}:
     get:
