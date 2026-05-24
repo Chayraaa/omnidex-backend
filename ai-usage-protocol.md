@@ -39,6 +39,7 @@ KI, um Ihren Promtverlauf entsprechnd dieser Vorlage festzuhalten.
 | 2026-05-14 | Pratham         | ChatGPT | Hilfe bei Entwurf von `SummaryService`/`LisaSummaryApiClient` inkl. Fallback-Idee                            | Implementierung eigenständig integriert, Prompt/Antwortformat und Fallback-Verhalten fachlich geprüft          |
 | 2026-05-14 | Pratham         | ChatGPT | Unterstützung bei Persistenz-Erweiterung (`card_summary`, Card-Insert, Image-Referenz, DB-Schema-Sync)      | Vorschläge selektiv übernommen, SQLAlchemy-Modelle/Repos manuell nachgezogen und gegen Laufzeit geprüft        |
 | 2026-05-14 | Pratham         | ChatGPT | Hilfe bei API/DTO/Test-Anpassungen (Scan-Response, OpenAPI, Unit-Tests, Troubleshooting)                    | Antworten/Tests manuell verifiziert, reale End-to-End Calls ausgeführt und nur passende Teile übernommen       |
+| 2026-05-24 | Pratham         | ChatGPT | Strukturhilfe für `CollectionService` (Service/Repository/DTO/Route-Aufteilung), inkl. Such-/Sort-/Filter-Use-Cases | KI als Sparringspartner für Architektur genutzt; teilweise Snippets übernommen, projektkonform angepasst und wesentliche Teile eigenständig implementiert/verifiziert |
 
 ## Optionale ergänzende Hinweise
 

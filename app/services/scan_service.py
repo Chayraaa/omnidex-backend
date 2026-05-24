@@ -1,6 +1,7 @@
 from urllib.parse import quote
 from io import BytesIO
 from uuid import uuid4
+import json
 
 from app.domain_models.scan_result_dto import ScanResultDto, ScanAlternativeDto
 from app.services.recognition_errors import (
@@ -38,7 +39,20 @@ class ScanService:
         description, knowledge_enriched = self._get_knowledge(recognition_result.label)
         card_summary, summary_generated_by_ai = self._get_card_summary(recognition_result.label, description)
 
-        card_id, image_reference = self._persist_card(user_id, recognition_result.label, card_summary, image_input)
+        card_id, image_reference, created_at = self._persist_card(
+            user_id=user_id,
+            recognition_label=recognition_result.label,
+            card_summary=card_summary,
+            image_bytes=image_input,
+            confidence=recognition_result.confidence,
+            description=description,
+            source_title=recognition_result.label if knowledge_enriched else None,
+            source_url=self._build_wikipedia_url(recognition_result.label) if knowledge_enriched else None,
+            alternatives=[
+                {"label": alternative.label, "confidence": alternative.confidence}
+                for alternative in recognition_result.alternatives
+            ],
+        )
 
         return ScanResultDto(
             label=recognition_result.label,
@@ -56,6 +70,7 @@ class ScanService:
             summary_generated_by_ai=summary_generated_by_ai,
             id=card_id,
             image_reference=image_reference,
+            created_at=created_at,
         )
 
     def _recognize_image(self, image_input: bytes):
@@ -118,21 +133,42 @@ class ScanService:
             return self.FALLBACK_CARD_SUMMARY
         return candidate
 
-    def _persist_card(self, user_id: int, label: str, card_summary: str, image_bytes: bytes) -> tuple[int, str]:
+    def _persist_card(
+        self,
+        *,
+        user_id: int,
+        recognition_label: str,
+        card_summary: str,
+        image_bytes: bytes,
+        confidence: float,
+        description: str,
+        source_title: str | None,
+        source_url: str | None,
+        alternatives: list[dict],
+    ) -> tuple[int, str, str | None]:
         try:
             extension = self._detect_extension(image_bytes)
             key = f"cards/{user_id}/{uuid4()}.{extension}"
             self.image_storage.save_image(key, BytesIO(image_bytes))
             image_reference = f"{self.base_url}/api/image/{key}"
 
-            name = self._unique_card_name(user_id, label.strip() if isinstance(label, str) else "unknown")
-            card_id = self.card_repo.create_card(
+            name = self._unique_card_name(
+                user_id,
+                recognition_label.strip() if isinstance(recognition_label, str) else "unknown",
+            )
+            card_id, created_at = self.card_repo.create_card(
                 user_id=user_id,
                 name=name,
                 image_key=image_reference,
                 card_summary=card_summary,
+                category="Unbekannt",
+                confidence=confidence,
+                description=description,
+                source_title=source_title,
+                source_url=source_url,
+                alternatives_json=json.dumps(alternatives),
             )
-            return card_id, image_reference
+            return card_id, image_reference, created_at
         except Exception as exc:
             raise ScanCreationFailed("Failed to persist scan result") from exc
 

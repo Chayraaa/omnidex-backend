@@ -70,12 +70,39 @@ class _FakeCardRepo:
         self.existing_names = set()
         self.next_id = 1
 
-    def create_card(self, *, user_id: int, name: str, image_key: str, card_summary: str | None) -> int:
+    def create_card(
+        self,
+        *,
+        user_id: int,
+        name: str,
+        image_key: str,
+        card_summary: str | None,
+        category: str | None = None,
+        confidence: float | None = None,
+        description: str | None = None,
+        source_title: str | None = None,
+        source_url: str | None = None,
+        alternatives_json: str | None = None,
+    ) -> tuple[int, str | None]:
         card_id = self.next_id
         self.next_id += 1
-        self.created.append((card_id, user_id, name, image_key, card_summary))
+        self.created.append(
+            {
+                "id": card_id,
+                "user_id": user_id,
+                "name": name,
+                "image_key": image_key,
+                "card_summary": card_summary,
+                "category": category,
+                "confidence": confidence,
+                "description": description,
+                "source_title": source_title,
+                "source_url": source_url,
+                "alternatives_json": alternatives_json,
+            }
+        )
         self.existing_names.add(name)
-        return card_id
+        return card_id, "2026-01-01T00:00:00"
 
     def card_name_exists(self, *, user_id: int, name: str) -> bool:
         return name in self.existing_names
