@@ -239,7 +239,6 @@ def login_required(f):
 
         # Get the token from the Authorization header
         token = request.headers.get("Authorization")
-        print(request.headers)
         if not token:
             return jsonify({"error": "Token missing"}), 401
 

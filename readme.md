@@ -109,9 +109,11 @@ echo ${#TOKEN}
 Replace `<ABSOLUTE_IMAGE_PATH>` with your file path:
 
 ```bash
-IMG_B64=$(base64 -w 0 "<ABSOLUTE_IMAGE_PATH>")
+IMG_B64=$(python3 -c 'import base64, pathlib, sys; print(base64.b64encode(pathlib.Path(sys.argv[1]).read_bytes()).decode())' "<ABSOLUTE_IMAGE_PATH>")
 printf '{"image":"%s"}' "$IMG_B64" > /tmp/scan.json
 ```
+
+This Python variant is portable across Linux and macOS.
 
 ### 6) Call scan endpoint
 
@@ -203,21 +205,22 @@ UPDATE cards SET created_at = NOW() WHERE created_at IS NULL;
 Find your user id:
 
 ```bash
-docker compose exec db psql -U postgres -d omnidex -c "select id,email from users order by id;"
+USER_ID=$(docker compose exec -T db psql -U postgres -d omnidex -t -A -c "select id from users where email='coltest@example.com' limit 1;")
+echo "$USER_ID"
 ```
 
-Replace `<USER_ID>` below with that id (for `coltest@example.com`).
-
 ```bash
-docker compose exec db psql -U postgres -d omnidex -c "
+docker compose exec -T db psql -U postgres -d omnidex -c "
 insert into cards
 (name, card_summary, category, confidence, description, source_title, source_url, alternatives_json, image_key, created_at, user_id)
 values
-('rose', 'Rose short summary', 'Pflanze', 0.93, 'Rose description', 'Rose', 'https://en.wikipedia.org/wiki/Rose', '[]', 'http://127.0.0.1:5000/api/image/cards/<USER_ID>/rose.jpeg', now() - interval '3 day', <USER_ID>),
-('cat', 'Cat short summary', 'Tiere', 0.97, 'Cat description', 'Cat', 'https://en.wikipedia.org/wiki/Cat', '[{\"label\":\"lynx\",\"confidence\":0.31}]', 'http://127.0.0.1:5000/api/image/cards/<USER_ID>/cat.jpeg', now() - interval '2 day', <USER_ID>),
-('pizza', 'Pizza short summary', 'Nahrung', 0.95, 'Pizza description', 'Pizza', 'https://en.wikipedia.org/wiki/Pizza', '[]', 'http://127.0.0.1:5000/api/image/cards/<USER_ID>/pizza.jpeg', now() - interval '1 day', <USER_ID>);
+('rose', 'Rose short summary', 'Pflanze', 0.93, 'Rose description', 'Rose', 'https://en.wikipedia.org/wiki/Rose', '[]', 'http://127.0.0.1:5000/api/image/cards/' || '$USER_ID' || '/rose.jpeg', now() - interval '3 day', '$USER_ID'),
+('cat', 'Cat short summary', 'Tiere', 0.97, 'Cat description', 'Cat', 'https://en.wikipedia.org/wiki/Cat', '[{\"label\":\"lynx\",\"confidence\":0.31}]', 'http://127.0.0.1:5000/api/image/cards/' || '$USER_ID' || '/cat.jpeg', now() - interval '2 day', '$USER_ID'),
+('pizza', 'Pizza short summary', 'Nahrung', 0.95, 'Pizza description', 'Pizza', 'https://en.wikipedia.org/wiki/Pizza', '[]', 'http://127.0.0.1:5000/api/image/cards/' || '$USER_ID' || '/pizza.jpeg', now() - interval '1 day', '$USER_ID');
 "
 ```
+
+If you prefer to avoid shell interpolation inside SQL, replace the three `'$USER_ID'` occurrences manually with the numeric id.
 
 ### 6) Test list/search/sort/filter
 
@@ -249,6 +252,12 @@ curl -s "http://127.0.0.1:5000/api/collections/me?category=Pflanze" \
   -H "Authorization: Bearer $TOKEN" | jq
 ```
 
+If the response is `404 Not Found`, restart the backend container with a rebuild:
+
+```bash
+docker compose up -d --build backend
+```
+
 ### 7) Test detail endpoint
 
 ```bash
@@ -269,3 +278,21 @@ curl -s -i "http://127.0.0.1:5000/api/collections/me?sort=abc" \
 curl -s -i "http://127.0.0.1:5000/api/collections/me?category=ANIMAL" \
   -H "Authorization: Bearer $TOKEN"
 ```
+
+## Prerequisites And Common Issues
+
+Before running the quickstarts, make sure you have:
+
+- `docker` and `docker compose`
+- `python3`
+- `jq`
+- a free local port `5000` for the backend
+- a free local port `5432` or an already running PostgreSQL container managed by this compose file
+- a valid `.env` file in the repo root with the required LISA and JWT variables
+
+Common issues:
+
+- If a route returns `404` after code changes, rebuild the backend container with `docker compose up -d --build backend`.
+- If login works but `/api/scan` returns `502`, the request reached the backend and the issue is usually in the LISA response format or in LISA credentials.
+- If `/api/collections/me` shows no results, check that the inserted cards belong to the same user you logged in with.
+- If you use a different shell or OS, prefer the Python base64 command shown above instead of GNU-specific `base64 -w 0`.
