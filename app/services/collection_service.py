@@ -27,8 +27,9 @@ class CollectionService:
         "Gegenstände",
     }
 
-    def __init__(self, collection_repo: CollectionRepoProtocol):
+    def __init__(self, collection_repo: CollectionRepoProtocol, base_url: str):
         self.collection_repo = collection_repo
+        self.base_url = base_url.rstrip("/")
 
     def get_user_collection(
         self,
@@ -59,7 +60,7 @@ class CollectionService:
                 label=card.name,
                 category=card.category,
                 card_summary=card.card_summary,
-                image_url=card.image_key,
+                image_url=self._build_image_url(card.image_key),
                 created_at=card.created_at.isoformat() if card.created_at else None,
                 confidence=card.confidence,
             )
@@ -85,7 +86,7 @@ class CollectionService:
             source_title=card.source_title,
             source_url=card.source_url,
             alternatives=self._parse_alternatives(card.alternatives_json),
-            image_url=card.image_key,
+            image_url=self._build_image_url(card.image_key),
             created_at=card.created_at.isoformat() if card.created_at else None,
         )
 
@@ -136,3 +137,10 @@ class CollectionService:
             if isinstance(label, str):
                 sanitized.append({"label": label, "confidence": confidence})
         return sanitized
+
+    def _build_image_url(self, image_key: str | None) -> str | None:
+        if not isinstance(image_key, str) or not image_key.strip():
+            return None
+        if image_key.startswith("http://") or image_key.startswith("https://"):
+            return image_key
+        return f"{self.base_url}/api/image/{image_key.lstrip('/')}"

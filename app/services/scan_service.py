@@ -146,11 +146,12 @@ class ScanService:
         source_url: str | None,
         alternatives: list[dict],
     ) -> tuple[int, str, str | None]:
+        key: str | None = None
         try:
             extension = self._detect_extension(image_bytes)
             key = f"cards/{user_id}/{uuid4()}.{extension}"
             self.image_storage.save_image(key, BytesIO(image_bytes))
-            image_reference = f"{self.base_url}/api/image/{key}"
+            image_reference = self._build_image_reference(key)
 
             name = self._unique_card_name(
                 user_id,
@@ -159,7 +160,7 @@ class ScanService:
             card_id, created_at = self.card_repo.create_card(
                 user_id=user_id,
                 name=name,
-                image_key=image_reference,
+                image_key=key,
                 card_summary=card_summary,
                 category="Unbekannt",
                 confidence=confidence,
@@ -170,6 +171,11 @@ class ScanService:
             )
             return card_id, image_reference, created_at
         except Exception as exc:
+            if key is not None:
+                try:
+                    self.image_storage.delete_image(key)
+                except Exception:
+                    pass
             raise ScanCreationFailed("Failed to persist scan result") from exc
 
     def _unique_card_name(self, user_id: int, base_name: str) -> str:
@@ -197,3 +203,6 @@ class ScanService:
     @staticmethod
     def _build_wikipedia_url(label: str) -> str:
         return f"https://en.wikipedia.org/wiki/{quote(label.replace(' ', '_'))}"
+
+    def _build_image_reference(self, key: str) -> str:
+        return f"{self.base_url}/api/image/{key}"

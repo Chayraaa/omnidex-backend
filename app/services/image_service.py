@@ -38,7 +38,7 @@ class ImageService:
 
     def get_card_image_url(self, user: User) -> list[str]:
         keys = self.image_repo.get_card_keys_by_user_id(user.id)
-        urls = [f"{key}" for key in keys]
+        urls = [_build_image_url_from_key(self.base_url, self.image_path, key) for key in keys]
         return urls
 
     def get_image_stream(self, key: str):
@@ -54,3 +54,9 @@ def _infer_data_url_extension(data_url: str) -> str:
     if "image/webp" in header:
         return "webp"
     return "jpeg"
+
+
+def _build_image_url_from_key(base_url: str, image_path: str, key: str) -> str:
+    if key.startswith("http://") or key.startswith("https://"):
+        return key
+    return f"{base_url}/{image_path}/{key.lstrip('/')}"

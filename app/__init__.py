@@ -210,7 +210,10 @@ def setup_services(app: Flask):
         storage_unit_of_work.card_repo,
         base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"),
     )
-    app.collection_service = CollectionService(storage_unit_of_work.collection_repo)
+    app.collection_service = CollectionService(
+        storage_unit_of_work.collection_repo,
+        base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"),
+    )
 
 
 # Add all the routes here (see health as example)

@@ -88,7 +88,7 @@ class CollectionServiceTests(unittest.TestCase):
                 name="rose",
                 category="Pflanze",
                 card_summary="Rose summary",
-                image_key="http://image/1.jpg",
+                image_key="cards/1/rose.jpg",
                 created_at=datetime(2026, 5, 1, 12, 0, 0),
                 confidence=0.9,
                 description="A rose flower",
@@ -102,7 +102,7 @@ class CollectionServiceTests(unittest.TestCase):
                 name="cat",
                 category="Tiere",
                 card_summary="Cat summary",
-                image_key="http://image/2.jpg",
+                image_key="cards/1/cat.jpg",
                 created_at=datetime(2026, 5, 2, 12, 0, 0),
                 confidence=0.95,
                 description="A cat mammal",
@@ -113,13 +113,16 @@ class CollectionServiceTests(unittest.TestCase):
                 name="pizza",
                 category="Nahrung",
                 card_summary="Pizza summary",
-                image_key="http://image/3.jpg",
+                image_key="cards/2/pizza.jpg",
                 created_at=datetime(2026, 5, 3, 12, 0, 0),
                 confidence=0.88,
                 description="A pizza dish",
             ),
         ]
-        self.service = CollectionService(_FakeCollectionRepo(self.cards))
+        self.service = CollectionService(
+            _FakeCollectionRepo(self.cards),
+            base_url="http://127.0.0.1:5000",
+        )
 
     def test_returns_only_entries_for_current_user(self):
         items = self.service.get_user_collection(user_id=1)
@@ -158,8 +161,13 @@ class CollectionServiceTests(unittest.TestCase):
         payload = detail.to_dict()
         self.assertEqual(payload["id"], 1)
         self.assertEqual(payload["label"], "rose")
+        self.assertEqual(payload["image_url"], "http://127.0.0.1:5000/api/image/cards/1/rose.jpg")
         self.assertEqual(payload["alternatives"], [{"label": "flower", "confidence": 0.3}])
         self.assertNotIn("provider_raw", payload)
+
+    def test_list_builds_public_image_urls_from_stored_keys(self):
+        items = self.service.get_user_collection(user_id=1)
+        self.assertEqual(items[0].image_url, "http://127.0.0.1:5000/api/image/cards/1/cat.jpg")
 
     def test_detail_lookup_does_not_return_entry_for_other_user(self):
         with self.assertRaises(CollectionEntryNotFound):

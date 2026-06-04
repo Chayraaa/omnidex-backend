@@ -11,7 +11,7 @@ if "app" not in sys.modules:
 
 from app.domain_models.recognition_result import RecognitionResult, RecognitionAlternative
 from app.services.recognition_errors import LowConfidence, RecognitionUnavailable
-from app.services.scan_errors import ScanInputInvalid, ScanRecognitionFailed
+from app.services.scan_errors import ScanCreationFailed, ScanInputInvalid, ScanRecognitionFailed
 from app.services.scan_service import ScanService
 from app.services.summary_errors import SummaryUnavailable, InvalidSummaryResponse
 
@@ -58,17 +58,22 @@ class _FakeSummaryService:
 class _FakeImageStorage:
     def __init__(self):
         self.saved = []
+        self.deleted = []
 
     def save_image(self, key: str, image_data):
         self.saved.append(key)
         return key
 
+    def delete_image(self, key: str):
+        self.deleted.append(key)
+
 
 class _FakeCardRepo:
-    def __init__(self):
+    def __init__(self, error: Exception | None = None):
         self.created = []
         self.existing_names = set()
         self.next_id = 1
+        self.error = error
 
     def create_card(
         self,
@@ -84,6 +89,8 @@ class _FakeCardRepo:
         source_url: str | None = None,
         alternatives_json: str | None = None,
     ) -> tuple[int, str | None]:
+        if self.error is not None:
+            raise self.error
         card_id = self.next_id
         self.next_id += 1
         self.created.append(
@@ -141,6 +148,10 @@ class ScanServiceTests(unittest.TestCase):
         self.assertEqual(payload["card_summary"], "A small domesticated carnivorous mammal.")
         self.assertTrue(payload["summary_generated_by_ai"])
         self.assertTrue(payload["knowledge_enriched"])
+        self.assertTrue(payload["image_reference"].startswith("http://127.0.0.1:5000/api/image/cards/42/"))
+        self.assertEqual(len(service.card_repo.created), 1)
+        self.assertTrue(service.card_repo.created[0]["image_key"].startswith("cards/42/"))
+        self.assertFalse(service.card_repo.created[0]["image_key"].startswith("http://127.0.0.1:5000"))
         self.assertNotIn("provider_raw", payload)
 
     def test_low_confidence_is_exposed_as_scan_recognition_failed(self):
@@ -296,6 +307,30 @@ class ScanServiceTests(unittest.TestCase):
         payload = service.create_scan(42, b"image-bytes").to_dict()
         self.assertEqual(payload["card_summary"], "One sentence. Two sentence.")
         self.assertTrue(payload["summary_generated_by_ai"])
+
+    def test_uploaded_image_is_deleted_when_card_persistence_fails(self):
+        recognition = RecognitionResult(
+            label="cat",
+            confidence=0.97,
+            alternatives=[],
+            category_hint=None,
+            provider_raw={"provider": "lisa"},
+        )
+        image_storage = _FakeImageStorage()
+        service = ScanService(
+            _FakeRecognitionService(result=recognition),
+            _FakeWikiService(summary="Cats are popular pets."),
+            _FakeSummaryService(summary="Cats are popular pets."),
+            image_storage,
+            _FakeCardRepo(error=RuntimeError("db insert failed")),
+            base_url="http://127.0.0.1:5000",
+        )
+
+        with self.assertRaises(ScanCreationFailed):
+            service.create_scan(42, b"image-bytes")
+
+        self.assertEqual(len(image_storage.saved), 1)
+        self.assertEqual(image_storage.deleted, image_storage.saved)
 
 
 if __name__ == "__main__":
