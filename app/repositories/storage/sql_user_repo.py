@@ -12,14 +12,14 @@ class SqlUserRepo:
         if not db_user:
             return None
         return User(id=db_user.id, name=db_user.name, hashed_password=db_user.password, oauth=db_user.oauth_method,
-                    profile_picture_key=db_user.profile_picture_key, email=db_user.email)
+                    profile_picture_key=db_user.profile_picture_key, email=db_user.email, friend_code=db_user.friend_code)
 
     def get_user_by_email(self, email: str) -> User | None:
         db_user = db.session.query(UserModel).filter_by(email=email).first()
         if not db_user:
             return None
         return User(id=db_user.id, name=db_user.name, hashed_password=db_user.password, oauth=db_user.oauth_method,
-                    profile_picture_key=db_user.profile_picture_key, email=db_user.email)
+                    profile_picture_key=db_user.profile_picture_key, email=db_user.email, friend_code=db_user.friend_code)
 
     def create_user(self, name: str, password: str, email: str, friend_code: str, oauth="local") -> bool:
         db_user = UserModel(name=name, password=password, oauth_method=oauth, email=email, friend_code=friend_code)

@@ -101,3 +101,21 @@ def set_profile_picture(user: User):
 def get_profile_picture(user_id: int):
     url = current_app.image_service.get_user_image_url(User(id=user_id, name="", hashed_password=""))
     return {"url": url}, 200
+
+
+@users.route("/<int:user_id>", methods=["GET"])
+@validate
+def get_user(user_id: int):
+    user = current_app.user_service.get_user(user_id)
+
+    if not user:
+        return {"message": "User not found"}, 404
+
+    return {
+        "user": {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "friend_code": user.friend_code
+        }
+    }, 200
