@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from app.services.friends_service import FriendsService
 from app.domain_models.user import User
 from app.repositories.storage.sql_friends_repo import SqlFriendsRepo
@@ -14,7 +14,12 @@ friends = Blueprint("friends", __name__)
 def get_friends_service():
     friends_repo = SqlFriendsRepo()
     user_repo = SqlUserRepo()
-    return FriendsService(friends_repo, user_repo)
+
+    return FriendsService(
+        friends_repo,
+        user_repo,
+        current_app.notification_service
+    )
 
 
 # SEND FRIEND REQUEST

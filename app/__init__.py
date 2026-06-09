@@ -17,8 +17,11 @@ from app.services.image_service import ImageService
 from app.services.password_service import PasswordService
 from app.services.google_oauth_service import GoogleOauthService
 from app.services.user_service import UserService
+from app.services.friends_service import FriendsService
 from app.extensions import db
 from openapi_core import OpenAPI
+from app.services.notification_service import NotificationService
+from app.repositories.storage.sql_notification_repo import SqlNotificationRepo
 
 # Add all the db database_models here
 from app.database_models.user_model import UserModel
@@ -102,7 +105,10 @@ def setup_services(app: Flask):
     app.password_service = PasswordService()
     # This is a user management service that you can give different implementations to
     # A service could also take another service as a dependency. Though make sure to prevent circular dependencies.
+    notification_repo = SqlNotificationRepo()
+    app.notification_service = NotificationService(notification_repo)
     app.user_service = UserService(storage_unit_of_work.user_repo, storage_unit_of_work.friends_repo)
+    app.friends_service = FriendsService( storage_unit_of_work.friends_repo, storage_unit_of_work.user_repo, app.notification_service)
     app.auth_service = AuthService(storage_unit_of_work.user_repo, storage_unit_of_work.refresh_token_repo)
     app.image_service = ImageService(storage_unit_of_work.image_storage, storage_unit_of_work.image_repo,
                                      base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"))
@@ -122,6 +128,8 @@ def setup_routes(app: Flask):
     app.register_blueprint(image, url_prefix="/api/image")
     from .routes.friends import friends
     app.register_blueprint(friends, url_prefix="/api/friends")
+    from .routes.notifications import notifications
+    app.register_blueprint(notifications, url_prefix="/api/notifications")
 
 
 ########################

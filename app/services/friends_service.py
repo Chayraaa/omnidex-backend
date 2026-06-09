@@ -11,9 +11,10 @@ class FriendshipStatus(str, Enum):
 
 
 class FriendsService:
-    def __init__(self, friends_repo: FriendsRepoProtocol, user_repo: UserRepoProtocol):
+    def __init__(self, friends_repo: FriendsRepoProtocol, user_repo: UserRepoProtocol, notification_service=None):
         self.friends_repo = friends_repo
         self.user_repo = user_repo
+        self.notification_service = notification_service
 
     # SEND FRIEND REQUEST
     def create_friend_request(self, sender: User, friend_code: str) -> bool:
@@ -32,6 +33,14 @@ class FriendsService:
             friend=receiver,
             status=FriendshipStatus.PENDING.value
         )
+
+        if self.notification_service:
+            self.notification_service.send(
+                user_id=receiver.id,
+                type="friend_request",
+                message=f"{sender.name} sent you a friend request"
+            )
+
         return True
     
     # ACCEPT REQUEST
@@ -67,12 +76,7 @@ class FriendsService:
 
     # REMOVE FRIEND
     def remove_friend(self, user: User, friend_id: int):
-        friendship = self.friends_repo.get_friend_request(user.id, friend_id)
-
-        if not friendship:
-            return False
-
-        return self.friends_repo.delete_friendship(friendship)
+        return self.friends_repo.delete_friendship(user.id, friend_id)
 
     # GET FRIENDS LIST
     def get_friends(self, user: User):

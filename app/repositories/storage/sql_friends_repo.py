@@ -69,15 +69,15 @@ class SqlFriendsRepo:
             for r in rows
         ]
 
-    def delete_friendship(self, friendship: Friends) -> bool:
+    def delete_friendship(self, user_id: int, friend_id: int) -> bool:
         db_obj = db.session.query(FriendsModel).filter(
             (
-                (FriendsModel.user_id == friendship.user_id) &
-                (FriendsModel.friend_id == friendship.friend_id)
+                (FriendsModel.user_id == user_id) &
+                (FriendsModel.friend_id == friend_id)
             ) |
             (
-                (FriendsModel.user_id == friendship.friend_id) &
-                (FriendsModel.friend_id == friendship.user_id)
+                (FriendsModel.user_id == friend_id) &
+                (FriendsModel.friend_id == user_id)
             )
         ).first()
 
@@ -87,6 +87,7 @@ class SqlFriendsRepo:
         db.session.delete(db_obj)
         db.session.commit()
         return True
+        
     
 
     def get_user_by_friend_code(self, friend_code: str) -> User | None:
