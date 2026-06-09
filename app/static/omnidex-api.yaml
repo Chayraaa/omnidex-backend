@@ -12,11 +12,111 @@ components:
       scheme: bearer
       bearerFormat: JWT
 
+  schemas:
+    entry:
+      type: object
+      required:
+        - id
+        - name
+        - pictureId
+        - description
+        - category
+        - entryDate
+        - firstDiscoveredUserId
+      properties:
+        id:
+          type: integer
+          example: 101
+        name:
+          type: string
+          example: Oak Tree
+        pictureId:
+          type: integer
+          example: 5821
+        description:
+          type: string
+          example: Large deciduous tree commonly found in forests.
+        category:
+          $ref: "#/components/schemas/category"
+        entryDate:
+          type: string
+          format: date
+          example: 2026-04-26
+        firstDiscoveredUserId:
+          type: integer
+          example: 42
+
+    newEntry:
+      type: object
+      required:
+        - name
+        - pictureId
+        - description
+        - category
+      properties:
+        name:
+          type: string
+        pictureId:
+          type: integer
+        description:
+          type: string
+        category:
+          $ref: "#/components/schemas/category"
+
+    entryUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        pictureId:
+          type: integer
+        description:
+          type: string
+        category:
+          $ref: "#/components/schemas/category"
+
+    category:
+      type: string
+      enum:
+        - PLANT
+        - ANIMAL
+        - OBJECT
+        - MINERAL
+        - FOOD
+
+    user:
+      type: object
+      required:
+        - id
+        - name
+        - friends
+        - pictureURL
+      properties:
+        id:
+          type: integer
+          example: 42
+        name:
+          type: string
+          example: Alice
+        friends:
+          type: array
+          description: Array of friend user IDs
+          items:
+            type: integer
+            example: 17
+          example:
+            - 17
+            - 23
+            - 91
+        pictureURL:
+          type: string
+          example: https://example.com/profile.jpg
+
 security:
   - bearerAuth: [ ]
 
 paths:
-  /api/users/create:
+  /v1/users/create:
     post:
       summary: Create a new user
       description: Creates a new user with a username, email and password.
@@ -68,7 +168,7 @@ paths:
                     type: string
                     example: User already exists
 
-  /api/users/login:
+  /v1/users/login:
     post:
       summary: Login user
       description: Authenticates user and returns a JWT token.
@@ -119,7 +219,7 @@ paths:
                     type: string
                     example: Invalid credentials
 
-  /api/users/google/login:
+  /v1/users/google/login:
     get:
       summary: Redirect to Google OAuth
       description: Redirects user to Google login page.
@@ -130,7 +230,7 @@ paths:
         "302":
           description: Redirect to Google OAuth
 
-  /api/users/google/callback:
+  /v1/users/google/callback:
     get:
       summary: Google OAuth callback
       description: Handles Google OAuth response and returns JWT.
@@ -164,7 +264,7 @@ paths:
                     type: string
                     example: Login session expired or invalid state. Please try again.
 
-  /api/status/health:
+  /v1/status/health:
     get:
       summary: "Health check"
       description: "Responds with a simple OK"
@@ -183,7 +283,7 @@ paths:
                     type: string
                     example: "OK"
 
-  /api/scan/login_test:
+  /v1/scan/login_test:
     get:
       summary: "Login test"
       description: "Responds with the user name"
@@ -201,7 +301,7 @@ paths:
                     type: string
                     example: "Hallo alice"
 
-  /api/users/set_profile_picture:
+  /v1/users/set_profile_picture:
     post:
       summary: Set user profile picture
       description: Uploads and sets the profile picture for the authenticated user.
@@ -240,7 +340,7 @@ paths:
         "401":
           description: Unauthorized
 
-  /api/users/get_profile_picture/{user_id}:
+  /v1/users/get_profile_picture/{user_id}:
     get:
       summary: Get user profile picture URL
       description: Returns a temporary URL to access the user's profile picture.
@@ -275,7 +375,7 @@ paths:
         "404":
           description: User or profile picture not found
 
-  /api/image/{key}:
+  /v1/image/{key}:
     get:
       summary: Get image by key
       security: [ ]
@@ -294,3 +394,824 @@ paths:
               schema:
                 type: string
                 format: binary
+
+  # Nia changes start!!
+
+  /v1/entries/{entryId}:
+    get:
+      summary: Retrieve a single entry by entryId
+      tags:
+        - Entries
+      parameters:
+        - name: entryId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Entry successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/entry"
+        "400":
+          description: Invalid entry ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The given ID is invalid and can't be processed"
+        "404":
+          description: Entry not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "No entry with given ID was found"
+        "500":
+          description: Internal server error
+
+    delete:
+      summary: Delete an entry per entryId
+      tags:
+        - Entries
+      parameters:
+        - name: entryId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Entry successfully deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Entry was deleted successfully"
+        "400":
+          description: Invalid request
+        "401":
+          description: Unauthorized. Please log in
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "You are not logged in. Please check your login status."
+        "403":
+          description: Forbidden. This entry is not yours
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "You do not have permissions to delete the entry of another user."
+        "404":
+          description: Entry not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "No entry with given ID was found. Please check entered ID"
+        "500":
+          description: Internal server error
+
+    put:
+      summary: Update an existing entry per entryId
+      tags:
+        - Entries
+      parameters:
+        - name: entryId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/entryUpdate"
+      responses:
+        "200":
+          description: Entry successfully updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Entry successfully updated"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Your request is invalid. Please check input data."
+        "401":
+          description: Unauthorized. Please log in
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Your login is invalid. Please check your login data."
+        "403":
+          description: Forbidden. This entry is not yours
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "You do not have permissions to update this entry."
+        "404":
+          description: Entry not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "No entry with given ID was found. Please check entered ID"
+        "409":
+          description: Update conflict
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "There is a conflict between the updated and current data. Please try again."
+        "422":
+          description: Unable to process update.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The update can't be processed by the server"
+        "500":
+          description: Internal server error
+
+
+  /v1/entries/categories/{categoryId}:
+    get:
+      summary: Retrieve all entries of said category by categoryId
+      tags:
+        - Entries
+      parameters:
+        - name: categoryId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Category successfully retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/entry"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The given request data was invalid. Please check the request."
+        "404":
+          description: No categories found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "No category with given ID was found. Please check entered ID"
+        "500":
+          description: Internal server error
+
+
+  /v1/entries:
+    post:
+      summary: Create a new entry
+      tags:
+        - Entries
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/entry"
+      responses:
+        "201":
+          description: Entry successfully created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The entry was successfully created"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The given request data is invalid."
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "You are not logged in. Please check your login status."
+        "422":
+          description: Cannot process data.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The given data couldn't be processed. Please try again."
+        "500":
+          description: Internal server error
+
+
+  /v1/entries/{userId}/entries:
+    get:
+      summary: Retrieve all entries discovered by a user by userId
+      tags:
+        - Entries
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User entries successfully retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/entry"
+        "403":
+          description: Forbidden. You do not have access to this user.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "You do not have permissions to see the entries of this user."
+        "404":
+          description: User or entries not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "No user with given ID was found. Please check the ID."
+        "500":
+          description: Internal server error
+
+
+  /v1/entries/{userId}/categories/{categoryId}:
+    get:
+      summary: Retrieve user entries filtered by category
+      tags:
+        - Entries
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: categoryId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Filtered entries successfully retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/entry"
+        "400":
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The given request parameters are invalid."
+        "404":
+          description: User or category not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "No user or category with given IDs were found. Please check the IDs."
+        "500":
+          description: Internal server error
+
+  # And now.. more changes meow...
+
+  /v1/users/{userId}:
+    get:
+      summary: Retrieve a user by userId
+      tags:
+        - Users
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/user"
+        "400":
+          description: Invalid user ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The given request parameters were invalid."
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "No user with given ID was found. Please check the ID."
+        "500":
+          description: Internal server error
+
+    delete:
+      summary: Delete a user by userId
+      tags:
+        - Users
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: User deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User was deleted successfully."
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The given request parameters are invalid."
+        "401":
+          description: Unauthorized. You are not logged in
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "You are not logged in. Please check your login status."
+        "403":
+          description: Forbidden. You are not said user.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "You do not have permissions to delete this user."
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "No user with given ID was found. Please check ID."
+        "500":
+          description: Internal server error
+
+    put:
+      summary: Edit current user profile
+      tags:
+        - Users
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/user"
+      responses:
+        "200":
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User was updated successfully."
+        "401":
+          description: Unauthorized. You are not logged in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "You are not logged in. Please check your login status."
+        "403":
+          description: Forbidden. You are not said user or lack the permission to edit.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "You do not have permission to edit this user."
+        "409":
+          description: Conflict (e.g. duplicate username)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "A conflict has occured with your request. Please try another username."
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The server was unable to process this request."
+        "500":
+          description: Internal server error
+
+  /v1/friends/{userId}:
+    get:
+      summary: Retrieve all friend IDs of a user
+      tags:
+        - Friends
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Friend IDs successfully retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+                example:
+                  - 17
+                  - 23
+                  - 91
+        "400":
+          description: Invalid user ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The given ID is invalid."
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The given request ID was invalid. Please check the ID."
+        "500":
+          description: Internal server error
+    post:
+      summary: Add friend
+      tags:
+        - Friends
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Friend added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Your friend was added to your friendlist successfully."
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The given request ID is invalid. Please check the ID."
+        "401":
+          description: Unauthorized. You are not logged in
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "You are not logged in. Please check your login data."
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The given user was not found. Please check the ID."
+        "409":
+          description: Friendship already exists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "There is already an established friendship with this user."
+        "422":
+          description: Invalid friend operation (e.g. adding yourself)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The server wasn't able to process your friend request. Did you try adding yourself?"
+        "500":
+          description: Internal server error
+    delete:
+      summary: Remove friend
+      tags:
+        - Friends
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Friend removed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The friend was successfully removed from your friendlist."
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The given request ID is invalid. Please check the ID."
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "You are not logged in. Please check your login status."
+        "404":
+          description: Friendship or user not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The given user was not found. Please check the given ID."
+        "500":
+          description: Internal server error
+
+  /v1/users/achievements/{userId}:
+    get:
+      summary: Retrieve user achievements
+      tags:
+        - Achievements
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Achievements retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  example: First Discovery
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The given user ID was invalid. Please check the ID."
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The given user was not found. Please check the ID."
+        "500":
+          description: Internal server error
+
+  /v1/users/experience/{userId}:
+    get:
+      summary: Retrieve user experience
+      tags:
+        - Users
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Experience successfully retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  experience:
+                    type: integer
+                    example: 4200
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The given user ID was invalid. Please check the ID."
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "The given user was not found. Please check the ID."
+        "500":
+          description: Internal server error
