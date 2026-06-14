@@ -71,7 +71,7 @@ class FriendsService:
 
         friendship.status = FriendshipStatus.REJECTED.value
 
-        self.friends_repo.update_friend_request(friendship)
+        self.friends_repo.delete_friendship(sender_id, receiver.id)
         return True
 
     # REMOVE FRIEND
