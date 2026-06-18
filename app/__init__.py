@@ -190,6 +190,61 @@ def setup_database(app: Flask):
                 except Exception:
                     db.session.rollback()
 
+        if inspector.has_table("users"):
+            existing = {col["name"] for col in inspector.get_columns("users")}
+            if "oauth_method" not in existing:
+                try:
+                    db.session.execute(text("ALTER TABLE users ADD COLUMN oauth_method VARCHAR"))
+                    db.session.execute(text("UPDATE users SET oauth_method = 'local' WHERE oauth_method IS NULL"))
+                    db.session.execute(text("ALTER TABLE users ALTER COLUMN oauth_method SET NOT NULL"))
+                    db.session.execute(text("ALTER TABLE users ALTER COLUMN oauth_method SET DEFAULT 'local'"))
+                    db.session.commit()
+                    app.logger.info("Added users.oauth_method column")
+                except Exception:
+                    db.session.rollback()
+            if "profile_picture_key" not in existing:
+                try:
+                    db.session.execute(text("ALTER TABLE users ADD COLUMN profile_picture_key VARCHAR"))
+                    db.session.execute(
+                        text("UPDATE users SET profile_picture_key = '' WHERE profile_picture_key IS NULL")
+                    )
+                    db.session.execute(text("ALTER TABLE users ALTER COLUMN profile_picture_key SET NOT NULL"))
+                    db.session.execute(text("ALTER TABLE users ALTER COLUMN profile_picture_key SET DEFAULT ''"))
+                    db.session.commit()
+                    app.logger.info("Added users.profile_picture_key column")
+                except Exception:
+                    db.session.rollback()
+            if "friend_code" not in existing:
+                try:
+                    db.session.execute(text("ALTER TABLE users ADD COLUMN friend_code VARCHAR"))
+                    db.session.execute(
+                        text(
+                            "UPDATE users "
+                            "SET friend_code = SUBSTRING(MD5(RANDOM()::text || CLOCK_TIMESTAMP()::text) FROM 1 FOR 8) "
+                            "WHERE friend_code IS NULL"
+                        )
+                    )
+                    db.session.execute(text("ALTER TABLE users ALTER COLUMN friend_code SET NOT NULL"))
+                    db.session.commit()
+                    app.logger.info("Added users.friend_code column")
+                except Exception:
+                    db.session.rollback()
+
+            unique_constraints = inspector.get_unique_constraints("users")
+            has_friend_code_unique = any(
+                constraint.get("column_names") == ["friend_code"] for constraint in unique_constraints
+            )
+
+            if not has_friend_code_unique:
+                try:
+                    db.session.execute(
+                        text("ALTER TABLE users ADD CONSTRAINT uq_users_friend_code UNIQUE (friend_code)")
+                    )
+                    db.session.commit()
+                    app.logger.info("Added users.friend_code unique constraint")
+                except Exception:
+                    db.session.rollback()
+
 
 ########################
 # REGULAR EDITING HERE #

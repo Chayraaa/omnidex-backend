@@ -374,19 +374,27 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                  format: email
-                  example: alice@example.com
-                password:
-                  type: string
-                  example: securePassword123
-                refresh_token:
-                  type: string
-                  description: Optional refresh token for session rotation. When provided, email and password are ignored.
-                  example: 7fe3cfec5c1140f2a8fd9ca8f8e0b56a
+              oneOf:
+                - type: object
+                  properties:
+                    email:
+                      type: string
+                      format: email
+                      example: alice@example.com
+                    password:
+                      type: string
+                      example: securePassword123
+                  required:
+                    - email
+                    - password
+                - type: object
+                  properties:
+                    refresh_token:
+                      type: string
+                      description: Refresh token used for session rotation.
+                      example: 7fe3cfec5c1140f2a8fd9ca8f8e0b56a
+                  required:
+                    - refresh_token
 
       responses:
         "200":
