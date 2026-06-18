@@ -26,26 +26,35 @@ def create_user():
 # Handles the login. It checks password and username, returns a jwt token which is subsequently checked in the
 # login_required decorator.
 @users.route("/login", methods=["POST"])
-@validate
+# @validate
 def login():
     data = request.get_json()
     email = (data.get("email") or "").strip().replace(" ", "")
     password = data.get("password")
+    refresh = (data.get("refresh_token") or "")
 
-    token = current_app.auth_service.authenticate_user(email, password)
-    if not token:
+    if refresh != "":
+        res = current_app.auth_service.refresh_session(refresh)
+    else:
+        res = current_app.auth_service.authenticate_local(email, password)
+    if not res:
         return {"message": "Invalid credentials."}, 401
+
+    token, refresh = res
 
     return {
         "message": "Login successful. Use token for authentication.",
-        "token": token
+        "access_token": token,
+        "refresh_token": refresh,
     }, 200
+
 
 @users.route("/google/login", methods=["GET"])
 @validate
 def google_login():
     redirect_uri = url_for("users.google_callback", _external=True)
     return current_app.google.authorize_redirect(redirect_uri)
+
 
 @users.route("/google/callback", methods=["GET"])
 @validate
@@ -65,11 +74,16 @@ def google_callback():
     if not user_info:
         return {"error": "Failed to fetch user info from Google"}, 400
 
-    jwt = current_app.google_oauth_service.authenticate_user(user_info)
+    jwt, refresh = current_app.google_oauth_service.authenticate_user(user_info)
     if not jwt:
         return {"error": "Failed to authenticate user"}, 400
 
-    return {"message": "Login successful. Use token for authentication.", "token": jwt}, 200
+    return {
+        "message": "Login successful. Use token for authentication.",
+        "access_token": jwt,
+        "refresh_token": refresh
+    }, 200
+
 
 @users.route("/set_profile_picture", methods=["POST"])
 @validate

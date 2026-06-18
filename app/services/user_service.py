@@ -1,3 +1,5 @@
+import uuid
+
 from app.domain_models.user import User
 from app.repositories.interfaces.storage.user_repo_protocol import UserRepoProtocol
 from app.services.password_service import PasswordService
@@ -22,7 +24,8 @@ class UserService:
         if self.repo.get_user_by_email(email):
             return False
         hashed_password = PasswordService.hash_password(password)
-        return self.repo.create_user(name=name, email=email, password=hashed_password)
+        friend_code = str(uuid.uuid4())[:8]
+        return self.repo.create_user(name=name, email=email, password=hashed_password, friend_code=friend_code)
 
     def update_user(self, user: User) -> bool:
         return self.repo.update_user(user)

@@ -21,8 +21,8 @@ class SqlUserRepo:
         return User(id=db_user.id, name=db_user.name, hashed_password=db_user.password, oauth=db_user.oauth_method,
                     profile_picture_key=db_user.profile_picture_key, email=db_user.email)
 
-    def create_user(self, name: str, password: str, email: str, oauth="local") -> bool:
-        db_user = UserModel(name=name, password=password, oauth_method=oauth, email=email)
+    def create_user(self, name: str, password: str, email: str, friend_code: str, oauth="local") -> bool:
+        db_user = UserModel(name=name, password=password, oauth_method=oauth, email=email, friend_code=friend_code)
         db.session.add(db_user)
         db.session.commit()
         return True

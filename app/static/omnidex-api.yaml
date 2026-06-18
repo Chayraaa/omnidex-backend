@@ -365,7 +365,7 @@ paths:
   /api/users/login:
     post:
       summary: Login user
-      description: Authenticates user and returns a JWT token.
+      description: Authenticates a local user or refreshes an existing session and returns access plus refresh tokens.
       tags:
         - Users
       security: [ ]
@@ -383,9 +383,10 @@ paths:
                 password:
                   type: string
                   example: securePassword123
-              required:
-                - email
-                - password
+                refresh_token:
+                  type: string
+                  description: Optional refresh token for session rotation. When provided, email and password are ignored.
+                  example: 7fe3cfec5c1140f2a8fd9ca8f8e0b56a
 
       responses:
         "200":
@@ -398,9 +399,12 @@ paths:
                   message:
                     type: string
                     example: Login successful
-                  token:
+                  access_token:
                     type: string
                     example: eyJhbGciOi...
+                  refresh_token:
+                    type: string
+                    example: 7fe3cfec5c1140f2a8fd9ca8f8e0b56a
 
         "401":
           description: Invalid credentials
@@ -427,7 +431,7 @@ paths:
   /api/users/google/callback:
     get:
       summary: Google OAuth callback
-      description: Handles Google OAuth response and returns JWT.
+      description: Handles Google OAuth response and returns access plus refresh tokens.
       tags:
         - Google OAuth
       security: [ ]
@@ -439,9 +443,12 @@ paths:
               schema:
                 type: object
                 properties:
-                  token:
+                  access_token:
                     type: string
                     example: eyJhbGciOi...
+                  refresh_token:
+                    type: string
+                    example: 7fe3cfec5c1140f2a8fd9ca8f8e0b56a
         "401":
           description: OAuth authentication failed
         "400":
