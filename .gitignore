@@ -13,3 +13,16 @@ venv/
 __pycache__/
 *.pyc
 .env
+.env.*
+!.env.example
+.envrc
+.secrets/
+secrets/
+*.secret
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+test-images/
+local-images/

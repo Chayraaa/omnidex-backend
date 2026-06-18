@@ -10,18 +10,27 @@ from openapi_core.exceptions import OpenAPIError
 from openapi_core.validation.request.exceptions import InvalidRequestBody
 from openapi_core.validation.schemas.exceptions import InvalidSchemaValue
 from sqlalchemy import inspect
+from sqlalchemy import text
 
 from app.repositories.units_of_work.sql_unit import SqlUnitOfWork
 from app.services.auth_service import AuthService
 from app.services.image_service import ImageService
 from app.services.password_service import PasswordService
 from app.services.google_oauth_service import GoogleOauthService
+from app.services.recognition_service import RecognitionService
+from app.services.scan_service import ScanService
+from app.services.collection_service import CollectionService
+from app.services.summary_service import SummaryService
 from app.services.user_service import UserService
+from app.repositories.external.wiki_repo import WikiRepo
+from app.repositories.external.lisa_api_client import LisaApiClient
+from app.repositories.external.lisa_summary_api_client import LisaSummaryApiClient
 from app.extensions import db
 from openapi_core import OpenAPI
 
 # Add all the db database_models here
 from app.database_models.user_model import UserModel
+from app.services.wiki_service import WikiService
 
 # Open API file path
 api_url = "/static/omnidex-api.yaml"
@@ -79,6 +88,101 @@ def setup_database(app: Flask):
             else:
                 app.logger.info(f"Table {table_name} already exists")
 
+        # Lightweight schema sync for environments without migrations.
+        # Adds new columns when the table already exists.
+        if inspector.has_table("cards"):
+            existing = {col["name"] for col in inspector.get_columns("cards")}
+            if "card_summary" not in existing:
+                try:
+                    db.session.execute(text("ALTER TABLE cards ADD COLUMN card_summary VARCHAR"))
+                    db.session.commit()
+                    app.logger.info("Added cards.card_summary column")
+                except Exception:
+                    db.session.rollback()
+            if "category" not in existing:
+                try:
+                    db.session.execute(text("ALTER TABLE cards ADD COLUMN category VARCHAR"))
+                    db.session.commit()
+                    app.logger.info("Added cards.category column")
+                except Exception:
+                    db.session.rollback()
+            if "category_id" not in existing:
+                try:
+                    db.session.execute(text("ALTER TABLE cards ADD COLUMN category_id INTEGER"))
+                    db.session.commit()
+                    app.logger.info("Added cards.category_id column")
+                except Exception:
+                    db.session.rollback()
+            if "confidence" not in existing:
+                try:
+                    db.session.execute(text("ALTER TABLE cards ADD COLUMN confidence DOUBLE PRECISION"))
+                    db.session.commit()
+                    app.logger.info("Added cards.confidence column")
+                except Exception:
+                    db.session.rollback()
+            if "description" not in existing:
+                try:
+                    db.session.execute(text("ALTER TABLE cards ADD COLUMN description TEXT"))
+                    db.session.commit()
+                    app.logger.info("Added cards.description column")
+                except Exception:
+                    db.session.rollback()
+            if "source_title" not in existing:
+                try:
+                    db.session.execute(text("ALTER TABLE cards ADD COLUMN source_title VARCHAR"))
+                    db.session.commit()
+                    app.logger.info("Added cards.source_title column")
+                except Exception:
+                    db.session.rollback()
+            if "source_url" not in existing:
+                try:
+                    db.session.execute(text("ALTER TABLE cards ADD COLUMN source_url VARCHAR"))
+                    db.session.commit()
+                    app.logger.info("Added cards.source_url column")
+                except Exception:
+                    db.session.rollback()
+            if "alternatives_json" not in existing:
+                try:
+                    db.session.execute(text("ALTER TABLE cards ADD COLUMN alternatives_json TEXT"))
+                    db.session.commit()
+                    app.logger.info("Added cards.alternatives_json column")
+                except Exception:
+                    db.session.rollback()
+            if "created_at" not in existing:
+                try:
+                    db.session.execute(text("ALTER TABLE cards ADD COLUMN created_at TIMESTAMP"))
+                    db.session.execute(text("UPDATE cards SET created_at = NOW() WHERE created_at IS NULL"))
+                    db.session.execute(text("ALTER TABLE cards ALTER COLUMN created_at SET NOT NULL"))
+                    db.session.execute(text("ALTER TABLE cards ALTER COLUMN created_at SET DEFAULT NOW()"))
+                    db.session.commit()
+                    app.logger.info("Added cards.created_at column")
+                except Exception:
+                    db.session.rollback()
+
+            unique_constraints = inspector.get_unique_constraints("cards")
+            has_global_name_unique = any(constraint.get("column_names") == ["name"] for constraint in unique_constraints)
+            has_user_name_unique = any(
+                constraint.get("column_names") == ["user_id", "name"] for constraint in unique_constraints
+            )
+
+            if has_global_name_unique:
+                try:
+                    db.session.execute(text("ALTER TABLE cards DROP CONSTRAINT IF EXISTS cards_name_key"))
+                    db.session.commit()
+                    app.logger.info("Dropped legacy cards.name unique constraint")
+                except Exception:
+                    db.session.rollback()
+
+            if not has_user_name_unique:
+                try:
+                    db.session.execute(
+                        text("ALTER TABLE cards ADD CONSTRAINT uq_cards_user_id_name UNIQUE (user_id, name)")
+                    )
+                    db.session.commit()
+                    app.logger.info("Added cards(user_id, name) unique constraint")
+                except Exception:
+                    db.session.rollback()
+
 
 ########################
 # REGULAR EDITING HERE #
@@ -100,6 +204,23 @@ def setup_services(app: Flask):
     app.image_service = ImageService(storage_unit_of_work.image_storage, storage_unit_of_work.image_repo,
                                      base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"))
     app.google_oauth_service = GoogleOauthService(storage_unit_of_work.user_repo)
+    app.wiki_service = WikiService(WikiRepo())
+    lisa_adapter = LisaApiClient()
+    lisa_summary_adapter = LisaSummaryApiClient()
+    app.recognition_service = RecognitionService(lisa_adapter)
+    app.summary_service = SummaryService(lisa_summary_adapter)
+    app.scan_service = ScanService(
+        app.recognition_service,
+        app.wiki_service,
+        app.summary_service,
+        storage_unit_of_work.image_storage,
+        storage_unit_of_work.card_repo,
+        base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"),
+    )
+    app.collection_service = CollectionService(
+        storage_unit_of_work.collection_repo,
+        base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"),
+    )
 
 
 # Add all the routes here (see health as example)
@@ -112,6 +233,10 @@ def setup_routes(app: Flask):
     app.register_blueprint(scan, url_prefix="/api/scan")
     from .routes.image import image
     app.register_blueprint(image, url_prefix="/api/image")
+    from .routes.wiki import wiki
+    app.register_blueprint(wiki, url_prefix="/api/wiki")
+    from .routes.collection import collection
+    app.register_blueprint(collection, url_prefix="/api/collections")
 
 
 ########################
@@ -124,7 +249,6 @@ def login_required(f):
 
         # Get the token from the Authorization header
         token = request.headers.get("Authorization")
-        print(request.headers)
         if not token:
             return jsonify({"error": "Token missing"}), 401
 
