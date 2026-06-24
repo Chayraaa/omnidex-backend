@@ -305,54 +305,54 @@ components:
           type: string
           nullable: true
           example: "2026-05-14T18:59:18"
-  
-  achievement:
-    type: object
-    required:
-        - id
-        - name
-        - required
-        - achievementReward
-        - icon
-        - isDone
-        - currentProgress
-    properties:
-      id:
-        type: integer
-        example: 2
-      name:
-        type: string
-        nullable: false
-        example: "collect 20 plants"
+    
+    achievement:
+      type: object
       required:
-        type: integer
-        nullable: false
-      achievementReward: 
-        type: integer
-        example: 200
-      icon:
-        type: string
-        nullable: false
-        example: http://127.0.0.1:5000/api/image/cards/1/abc.jpeg
+          - id
+          - name
+          - required
+          - achievementReward
+          - icon
+          - isDone
+          - currentProgress
+      properties:
+        id:
+          type: integer
+          example: 2
+        name:
+          type: string
+          nullable: false
+          example: "collect 20 plants"
+        required:
+          type: integer
+          nullable: false
+        achievementReward: 
+          type: integer
+          example: 200
+        icon:
+          type: string
+          nullable: false
+          example: http://127.0.0.1:5000/api/image/cards/1/abc.jpeg
 
 
-  achievementProgress:
-    type: object
-    required:
-        - id
-        - isDone
-        - currentProgress
-    properties:
-      id:
-        type: integer
-        example: 2
-      isDone:
-        type: boolean
-        nullable: false
-      currentProgress:
-        type: integer
-        nullable: false
-        example: 20
+    achievementProgress:
+      type: object
+      required:
+          - id
+          - isDone
+          - currentProgress
+      properties:
+        id:
+          type: integer
+          example: 2
+        isDone:
+          type: boolean
+          nullable: false
+        currentProgress:
+          type: integer
+          nullable: false
+          example: 20
 
 
 
@@ -1186,7 +1186,6 @@ paths:
         "500":
           description: Internal server error
 
-###############################################################################################################################################
 
   /api/achievements:
     get:
