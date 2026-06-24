@@ -5,10 +5,6 @@ from app.extensions import db
 
 
 class SqlImageRepo:
-    def save_card_image(self, key: str, user_id) -> str:
-        db.session.add(CardModel(image_key=key, user_id=user_id, name=""))
-        return key
-
     def save_user_image(self, key: str, user_id) -> str:
         user = db.session.get(UserModel, user_id)
         user.profile_picture_key = key

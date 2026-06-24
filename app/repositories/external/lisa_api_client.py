@@ -1,0 +1,293 @@
+import os
+import json
+from typing import Any
+
+import requests
+
+from app.repositories.interfaces.external.lisa_adapter_protocol import LisaAdapterProtocol
+from app.services.recognition_errors import RecognitionUnavailable, InvalidRecognitionResponse
+
+
+class LisaApiClient(LisaAdapterProtocol):
+    def __init__(
+        self,
+        base_url: str | None = None,
+        api_key: str | None = None,
+        timeout_seconds: float | None = None,
+        model: str | None = None,
+    ):
+        self.base_url = (base_url or os.environ.get("LISA_BASE_URL", "")).strip().rstrip("/")
+        self.api_key = (api_key or os.environ.get("LISA_API_KEY", "")).strip()
+        self.model = (model or os.environ.get("LISA_MODEL", "lisa-vision")).strip()
+
+        timeout_raw = timeout_seconds if timeout_seconds is not None else os.environ.get("LISA_TIMEOUT_SECONDS", "10")
+        self.timeout_seconds = float(timeout_raw)
+
+        if not self.base_url:
+            raise ValueError("LISA_BASE_URL environment variable is required")
+        if not self.api_key:
+            raise ValueError("LISA_API_KEY environment variable is required")
+
+    def recognize_image(self, image_data: bytes) -> dict[str, Any]:
+        if not image_data:
+            raise InvalidRecognitionResponse("No image data provided for recognition")
+
+        file_id = self._upload_image(image_data)
+        payload = self._request_completion(file_id)
+        return self._normalize_payload(self._extract_assistant_payload(payload))
+
+    def _upload_image(self, image_data: bytes) -> str:
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/v1/files/",
+                params={"process": "false"},
+                headers=self._auth_headers(),
+                files={"file": ("scan.jpg", image_data, "image/jpeg")},
+                timeout=self.timeout_seconds,
+            )
+        except requests.RequestException as exc:
+            raise RecognitionUnavailable("LISA image upload failed") from exc
+
+        payload = self._read_json_response(response, "LISA image upload")
+        file_id = self._extract_file_id(payload)
+        if not file_id:
+            raise InvalidRecognitionResponse("LISA image upload response did not include a file id")
+        return file_id
+
+    def _request_completion(self, file_id: str) -> dict[str, Any]:
+        prompt = (
+            "Identify the main object in this image. Return JSON only with this shape: "
+            '{"label": "object name", "confidence": 0.0, '
+            '"alternatives": [{"label": "other object", "confidence": 0.0}], '
+            '"category_hint": "category or null"}'
+        )
+        request_payload = {
+            "model": self.model,
+            "stream": False,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": file_id}},
+                    ],
+                }
+            ],
+        }
+
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/chat/completions",
+                headers={**self._auth_headers(), "Content-Type": "application/json"},
+                json=request_payload,
+                timeout=self.timeout_seconds,
+            )
+        except requests.RequestException as exc:
+            raise RecognitionUnavailable("LISA completion request failed") from exc
+
+        return self._read_json_response(response, "LISA completion")
+
+    def _read_json_response(self, response: requests.Response, operation: str) -> Any:
+        if response.status_code >= 500:
+            raise RecognitionUnavailable(f"{operation} returned server error: {response.status_code}")
+        if response.status_code >= 400:
+            raise InvalidRecognitionResponse(f"{operation} rejected request: HTTP {response.status_code}")
+
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise InvalidRecognitionResponse(f"{operation} returned non-JSON response") from exc
+
+    def _auth_headers(self) -> dict[str, str]:
+        token = self.api_key
+        if token.lower().startswith("bearer "):
+            token = token[7:].strip()
+        return {"Authorization": f"Bearer {token}"}
+
+    def _extract_file_id(self, payload: Any) -> str | None:
+        if not isinstance(payload, dict):
+            return None
+
+        for source in (payload, payload.get("file"), payload.get("data")):
+            if not isinstance(source, dict):
+                continue
+            value = source.get("id", source.get("file_id"))
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return None
+
+    def _extract_assistant_payload(self, payload: Any) -> dict[str, Any]:
+        if not isinstance(payload, dict):
+            raise InvalidRecognitionResponse("LISA completion payload must be a JSON object")
+
+        content = self._extract_assistant_content(payload)
+        if isinstance(content, dict):
+            return content
+        if not isinstance(content, str) or not content.strip():
+            raise InvalidRecognitionResponse("LISA completion response did not include assistant content")
+
+        return self._parse_json_content(content)
+
+    def _extract_assistant_content(self, payload: dict[str, Any]) -> Any:
+        choices = payload.get("choices")
+        if isinstance(choices, list) and choices:
+            first_choice = choices[0]
+            if isinstance(first_choice, dict):
+                message = first_choice.get("message")
+                if isinstance(message, dict) and "content" in message:
+                    return message["content"]
+                if "text" in first_choice:
+                    return first_choice["text"]
+
+        message = payload.get("message")
+        if isinstance(message, dict) and "content" in message:
+            return message["content"]
+
+        messages = payload.get("messages")
+        if isinstance(messages, list):
+            for message in reversed(messages):
+                if isinstance(message, dict) and message.get("role") == "assistant":
+                    return message.get("content")
+
+        if "content" in payload:
+            return payload["content"]
+        return None
+
+    def _parse_json_content(self, content: str) -> dict[str, Any]:
+        stripped = content.strip()
+        if stripped.startswith("```"):
+            stripped = stripped.strip("`").strip()
+            if stripped.lower().startswith("json"):
+                stripped = stripped[4:].strip()
+
+        try:
+            parsed = json.loads(stripped)
+        except json.JSONDecodeError:
+            parsed = self._parse_embedded_json(stripped)
+
+        if not isinstance(parsed, dict):
+            raise InvalidRecognitionResponse("LISA assistant content must contain a JSON object")
+        return parsed
+
+    @staticmethod
+    def _parse_embedded_json(content: str) -> Any:
+        decoder = json.JSONDecoder()
+        for index, char in enumerate(content):
+            if char != "{":
+                continue
+            try:
+                parsed, _ = decoder.raw_decode(content[index:])
+                return parsed
+            except json.JSONDecodeError:
+                continue
+        raise InvalidRecognitionResponse("LISA assistant content did not contain valid JSON")
+
+    def _normalize_payload(self, payload: Any) -> dict[str, Any]:
+        if not isinstance(payload, dict):
+            raise InvalidRecognitionResponse("LISA payload must be a JSON object")
+
+        candidates = self._extract_candidates(payload)
+        if not candidates:
+            raise InvalidRecognitionResponse("No recognition candidates found in LISA payload")
+
+        candidates.sort(
+            key=lambda item: item.get("confidence")
+            if isinstance(item.get("confidence"), (int, float))
+            else -1.0,
+            reverse=True,
+        )
+
+        primary = candidates[0]
+        label = primary.get("label")
+        confidence = primary.get("confidence")
+        if not isinstance(label, str) or not label.strip():
+            raise InvalidRecognitionResponse("Primary recognition candidate is missing a label")
+        if not isinstance(confidence, (int, float)):
+            raise InvalidRecognitionResponse("Primary recognition candidate is missing numeric confidence")
+
+        alternatives = []
+        for candidate in candidates[1:]:
+            alternative_label = candidate.get("label")
+            if not isinstance(alternative_label, str) or not alternative_label.strip():
+                continue
+            alternative_confidence = candidate.get("confidence")
+            if isinstance(alternative_confidence, (int, float)):
+                alternatives.append({
+                    "label": alternative_label,
+                    "confidence": float(alternative_confidence),
+                })
+            else:
+                alternatives.append({"label": alternative_label})
+
+        return {
+            "label": label.strip(),
+            "confidence": float(confidence),
+            "alternatives": alternatives,
+            "category_hint": self._extract_category_hint(payload, primary),
+            "provider_raw": payload,
+        }
+
+    def _extract_candidates(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
+        sources: list[Any] = []
+
+        if isinstance(payload.get("predictions"), list):
+            sources.append(payload.get("predictions"))
+        if isinstance(payload.get("results"), list):
+            sources.append(payload.get("results"))
+        if isinstance(payload.get("candidates"), list):
+            sources.append(payload.get("candidates"))
+        if isinstance(payload.get("items"), list):
+            sources.append(payload.get("items"))
+
+        nested_data = payload.get("data")
+        if isinstance(nested_data, dict):
+            for key in ("predictions", "results", "candidates", "items"):
+                if isinstance(nested_data.get(key), list):
+                    sources.append(nested_data.get(key))
+
+        label = payload.get("label")
+        confidence = payload.get("confidence", payload.get("score", payload.get("probability")))
+        if isinstance(label, str) and isinstance(confidence, (int, float)):
+            sources.append([payload])
+
+        candidates: list[dict[str, Any]] = []
+        for source in sources:
+            for raw_candidate in source:
+                if not isinstance(raw_candidate, dict):
+                    continue
+                normalized = self._normalize_candidate(raw_candidate)
+                if normalized is not None:
+                    candidates.append(normalized)
+
+        return candidates
+
+    @staticmethod
+    def _normalize_candidate(raw_candidate: dict[str, Any]) -> dict[str, Any] | None:
+        label = raw_candidate.get("label", raw_candidate.get("name", raw_candidate.get("class")))
+        if not isinstance(label, str) or not label.strip():
+            return None
+
+        confidence = raw_candidate.get(
+            "confidence",
+            raw_candidate.get("score", raw_candidate.get("probability")),
+        )
+        if isinstance(confidence, str):
+            try:
+                confidence = float(confidence)
+            except ValueError:
+                confidence = None
+
+        normalized: dict[str, Any] = {"label": label.strip()}
+        if isinstance(confidence, (int, float)):
+            normalized["confidence"] = float(confidence)
+        return normalized
+
+    @staticmethod
+    def _extract_category_hint(payload: dict[str, Any], primary_candidate: dict[str, Any]) -> str | None:
+        for source in (primary_candidate, payload, payload.get("data", {})):
+            if not isinstance(source, dict):
+                continue
+            value = source.get("category_hint", source.get("category"))
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return None

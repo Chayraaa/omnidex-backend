@@ -1,13 +1,20 @@
 from typing import Protocol
-from app.domain_models.card import Card
 
 
 class CardRepoProtocol(Protocol):
+    def create_card(
+        self,
+        *,
+        user_id: int,
+        name: str,
+        image_key: str,
+        card_summary: str | None,
+        category: str | None = None,
+        confidence: float | None = None,
+        description: str | None = None,
+        source_title: str | None = None,
+        source_url: str | None = None,
+        alternatives_json: str | None = None,
+    ) -> tuple[int, str | None]: ...
 
-    def get_card(self, card_id: int) -> Card | None: ...
-
-    def get_card_by_name(self, name: str) -> Card | None: ...
-
-    def create_card(self, name: str, image_key: str, user_id: int, category_id: int) -> bool: ...
-
-    def update_card(self, card: Card) -> bool: ...
+    def card_name_exists(self, *, user_id: int, name: str) -> bool: ...
