@@ -305,6 +305,56 @@ components:
           type: string
           nullable: true
           example: "2026-05-14T18:59:18"
+  
+  achievement:
+    type: object
+    required:
+        - id
+        - name
+        - required
+        - achievementReward
+        - icon
+        - isDone
+        - currentProgress
+    properties:
+      id:
+        type: integer
+        example: 2
+      name:
+        type: string
+        nullable: false
+        example: "collect 20 plants"
+      required:
+        type: integer
+        nullable: false
+      achievementReward: 
+        type: integer
+        example: 200
+      icon:
+        type: string
+        nullable: false
+        example: http://127.0.0.1:5000/api/image/cards/1/abc.jpeg
+
+
+  achievementProgress:
+    type: object
+    required:
+        - id
+        - isDone
+        - currentProgress
+    properties:
+      id:
+        type: integer
+        example: 2
+      isDone:
+        type: boolean
+        nullable: false
+      currentProgress:
+        type: integer
+        nullable: false
+        example: 20
+
+
 
 security:
   - bearerAuth: [ ]
@@ -1136,19 +1186,13 @@ paths:
         "500":
           description: Internal server error
 
+###############################################################################################################################################
 
-
-  /api/users/achievements/{userId}:
+  /api/achievements:
     get:
-      summary: Retrieve user achievements
+      summary: Retrieve all achievements
       tags:
         - Achievements
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: integer
       responses:
         "200":
           description: Achievements retrieved successfully
@@ -1157,12 +1201,73 @@ paths:
               schema:
                 type: array
                 items:
-                  type: string
-                  example: First Discovery
+                  schema:
+                    $ref: "#/components/schemas/achievement"
         "404":
           description: User not found
         "500":
           description: Internal server error
+
+  /api/achievements/progress/{userId}:
+    get:
+      summary: Get user progress
+      type:
+        -Achievements
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Progress retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  schema:
+                    $ref: "#/components/schemas/achievementProgress"
+        "404":
+          description: User not found
+        "500":
+          description: Internal server error
+
+    patch:
+      summary: Edit User achievement progress
+      type:
+        -Achievements
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                schema:
+                  $ref: "#/components/schemas/achievementProgress"   
+      responses:
+        "200":
+          description: Progress edited successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  schema:
+                    $ref: "#/components/schemas/achievementprogress"
+        "404":
+          description: User not found
+        "500":
+          description: Internal server error
+
 
 
 
