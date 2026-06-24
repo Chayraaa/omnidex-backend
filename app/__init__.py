@@ -302,6 +302,8 @@ def setup_routes(app: Flask):
     app.register_blueprint(wiki, url_prefix="/api/wiki")
     from .routes.collection import collection
     app.register_blueprint(collection, url_prefix="/api/collections")
+    from .routes.achievement import achievements
+    app.register_blueprint(achievements, url_prefix="/api/achievements")
 
 
 ########################

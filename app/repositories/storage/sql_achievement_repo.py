@@ -4,6 +4,9 @@ from app.extensions import db
 
 
 class SqlAchievementRepo:
+    def get_all_achievements(self) -> Achievement | None:
+        pass
+
     def get_achievement(self, achievement_id: int) -> Achievement | None:
         db_obj = db.session.get(AchievementModel, achievement_id)
         if not db_obj:
