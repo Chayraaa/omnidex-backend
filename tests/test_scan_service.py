@@ -10,6 +10,7 @@ if "app" not in sys.modules:
     sys.modules["app"] = app_package
 
 from app.domain_models.recognition_result import RecognitionResult, RecognitionAlternative
+from app.domain_models.category_assignment_result import CategoryAssignmentResult
 from app.services.recognition_errors import LowConfidence, RecognitionUnavailable
 from app.services.scan_errors import ScanCreationFailed, ScanInputInvalid, ScanRecognitionFailed
 from app.services.scan_service import ScanService
@@ -115,6 +116,20 @@ class _FakeCardRepo:
         return name in self.existing_names
 
 
+class _FakeCategoryService:
+    def __init__(self, result: CategoryAssignmentResult):
+        self.result = result
+        self.called_with = None
+
+    def assign_category(self, *, label: str, category_hint: str | None = None, wiki_text: str | None = None):
+        self.called_with = {
+            "label": label,
+            "category_hint": category_hint,
+            "wiki_text": wiki_text,
+        }
+        return self.result
+
+
 class ScanServiceTests(unittest.TestCase):
     def test_successful_scan_orchestration(self):
         recognition = RecognitionResult(
@@ -127,6 +142,9 @@ class ScanServiceTests(unittest.TestCase):
         recognition_service = _FakeRecognitionService(result=recognition)
         wiki_service = _FakeWikiService(summary="The cat is a domestic species of small carnivorous mammal.")
         summary_service = _FakeSummaryService(summary="A small domesticated carnivorous mammal.")
+        category_service = _FakeCategoryService(
+            CategoryAssignmentResult(category="Tiere", confidence=0.91, scores={"Tiere": 0.91}, generated_by_ai=True)
+        )
         service = ScanService(
             recognition_service,
             wiki_service,
@@ -134,6 +152,7 @@ class ScanServiceTests(unittest.TestCase):
             _FakeImageStorage(),
             _FakeCardRepo(),
             base_url="http://127.0.0.1:5000",
+            category_service=category_service,
         )
 
         result = service.create_scan(42, b"image-bytes")
@@ -144,6 +163,7 @@ class ScanServiceTests(unittest.TestCase):
         self.assertEqual(payload["label"], "cat")
         self.assertEqual(payload["confidence"], 0.97)
         self.assertEqual(payload["category_hint"], "ANIMAL")
+        self.assertEqual(payload["category"], "Tiere")
         self.assertEqual(payload["description"], "The cat is a domestic species of small carnivorous mammal.")
         self.assertEqual(payload["card_summary"], "A small domesticated carnivorous mammal.")
         self.assertTrue(payload["summary_generated_by_ai"])
@@ -152,6 +172,9 @@ class ScanServiceTests(unittest.TestCase):
         self.assertEqual(len(service.card_repo.created), 1)
         self.assertTrue(service.card_repo.created[0]["image_key"].startswith("cards/42/"))
         self.assertFalse(service.card_repo.created[0]["image_key"].startswith("http://127.0.0.1:5000"))
+        self.assertEqual(service.card_repo.created[0]["category"], "Tiere")
+        self.assertEqual(category_service.called_with["label"], "cat")
+        self.assertEqual(category_service.called_with["category_hint"], "ANIMAL")
         self.assertNotIn("provider_raw", payload)
 
     def test_low_confidence_is_exposed_as_scan_recognition_failed(self):

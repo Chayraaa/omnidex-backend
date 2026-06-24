@@ -19,6 +19,7 @@ class ScanResultDto:
     confidence: float
     alternatives: list[ScanAlternativeDto] = field(default_factory=list)
     category_hint: str | None = None
+    category: str = "Unbekannt"
     description: str = "No additional information available."
     card_summary: str = "No short description is currently available."
     source_title: str | None = None
@@ -35,6 +36,7 @@ class ScanResultDto:
             "label": self.label,
             "confidence": self.confidence,
             "category_hint": self.category_hint,
+            "category": self.category,
             "alternatives": [alternative.to_dict() for alternative in self.alternatives],
             "description": self.description,
             "card_summary": self.card_summary,

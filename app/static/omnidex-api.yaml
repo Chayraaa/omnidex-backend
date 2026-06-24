@@ -155,6 +155,7 @@ components:
         - label
         - confidence
         - alternatives
+        - category
         - description
         - card_summary
         - knowledge_enriched
@@ -175,6 +176,20 @@ components:
           type: string
           nullable: true
           example: PLANT
+        category:
+          type: string
+          description: Final Omnidex category assigned by AI or fallback logic.
+          enum:
+            - Pflanze
+            - Insekten
+            - Tiere
+            - Nahrung
+            - Unbekannt
+            - Technik
+            - Mechanik
+            - Gestein
+            - Gegenstände
+          example: Pflanze
         alternatives:
           type: array
           items:
@@ -710,9 +725,9 @@ paths:
           required: false
           schema:
             type: string
-            enum: [newest, oldest]
+            enum: [newest, oldest, alphabetical]
             default: newest
-          description: Sort order by scan creation time.
+          description: Sort order by scan creation time or object label.
         - in: query
           name: category
           required: false
@@ -786,6 +801,68 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/collectionEntryDetail"
+        "401":
+          description: Unauthorized.
+        "404":
+          description: Collection entry not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+  /api/collections/me/{entryId}/category:
+    patch:
+      summary: Update the category of one collection entry owned by the authenticated user
+      tags:
+        - Collection
+      parameters:
+        - in: path
+          name: entryId
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - category
+              properties:
+                category:
+                  type: string
+                  enum:
+                    - Pflanze
+                    - Insekten
+                    - Tiere
+                    - Nahrung
+                    - Unbekannt
+                    - Technik
+                    - Mechanik
+                    - Gestein
+                    - Gegenstände
+                  example: Tiere
+      responses:
+        "200":
+          description: Collection entry category updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/collectionEntryDetail"
+        "400":
+          description: Invalid category.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
         "401":
           description: Unauthorized.
         "404":
