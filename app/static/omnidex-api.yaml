@@ -1208,7 +1208,7 @@ paths:
     get:
       summary: Get user progress
       tags:
-        -Achievements
+        - Achievements
       parameters:
         - name: userId
           in: path
@@ -1232,7 +1232,7 @@ paths:
     patch:
       summary: Edit User achievement progress
       tags:
-        -Achievements
+        - Achievements
       parameters:
         - name: userId
           in: path
@@ -1255,8 +1255,7 @@ paths:
               schema:
                 type: array
                 items:
-                  schema:
-                    $ref: "#/components/schemas/achievementProgress"
+                  $ref: "#/components/schemas/achievementProgress"
         "404":
           description: User not found
         "500":
