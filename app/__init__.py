@@ -21,11 +21,13 @@ from app.services.recognition_service import RecognitionService
 from app.services.scan_service import ScanService
 from app.services.collection_service import CollectionService
 from app.services.summary_service import SummaryService
+from app.services.category_service import CategoryService
 from app.services.user_service import UserService
 from app.repositories.external.wiki_repo import WikiRepo
 from app.repositories.external.lisa_api_client import LisaApiClient
 from app.repositories.external.lisa_summary_api_client import LisaSummaryApiClient
 from app.services.friends_service import FriendsService
+from app.repositories.external.lisa_category_api_client import LisaCategoryApiClient
 from app.extensions import db
 from openapi_core import OpenAPI
 from app.services.notification_service import NotificationService
@@ -118,6 +120,30 @@ def setup_services(app: Flask):
     app.auth_service = AuthService(storage_unit_of_work.user_repo, storage_unit_of_work.refresh_token_repo)
     app.image_service = ImageService(storage_unit_of_work.image_storage, storage_unit_of_work.image_repo,
                                      base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"))
+    app.google_oauth_service = GoogleOauthService(
+        storage_unit_of_work.user_repo,
+        storage_unit_of_work.refresh_token_repo,
+    )
+    app.wiki_service = WikiService(WikiRepo())
+    lisa_adapter = LisaApiClient()
+    lisa_summary_adapter = LisaSummaryApiClient()
+    lisa_category_adapter = LisaCategoryApiClient()
+    app.recognition_service = RecognitionService(lisa_adapter)
+    app.summary_service = SummaryService(lisa_summary_adapter)
+    app.category_service = CategoryService(lisa_category_adapter)
+    app.scan_service = ScanService(
+        app.recognition_service,
+        app.wiki_service,
+        app.summary_service,
+        storage_unit_of_work.image_storage,
+        storage_unit_of_work.card_repo,
+        base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"),
+        category_service=app.category_service,
+    )
+    app.collection_service = CollectionService(
+        storage_unit_of_work.collection_repo,
+        base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"),
+    )
     app.google_oauth_service = GoogleOauthService(storage_unit_of_work.user_repo,
                                                   storage_unit_of_work.refresh_token_repo)
 

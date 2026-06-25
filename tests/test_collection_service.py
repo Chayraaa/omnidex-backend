@@ -63,7 +63,10 @@ class _FakeCollectionRepo:
         if category:
             rows = [card for card in rows if card.category == category]
 
-        rows.sort(key=lambda card: (card.created_at, card.id), reverse=(sort == "newest"))
+        if sort == "alphabetical":
+            rows.sort(key=lambda card: (card.name, card.id))
+        else:
+            rows.sort(key=lambda card: (card.created_at, card.id), reverse=(sort == "newest"))
 
         if offset is not None:
             rows = rows[offset:]
@@ -77,6 +80,13 @@ class _FakeCollectionRepo:
             if card.user_id == user_id and card.id == entry_id:
                 return card
         return None
+
+    def update_category_for_user(self, *, user_id: int, entry_id: int, category: str):
+        card = self.find_by_id_for_user(user_id=user_id, entry_id=entry_id)
+        if card is None:
+            return None
+        card.category = category
+        return card
 
 
 class CollectionServiceTests(unittest.TestCase):
@@ -144,6 +154,10 @@ class CollectionServiceTests(unittest.TestCase):
         items = self.service.get_user_collection(user_id=1, sort="oldest")
         self.assertEqual([item.id for item in items], [1, 2])
 
+    def test_sort_alphabetical_returns_labels_ascending(self):
+        items = self.service.get_user_collection(user_id=1, sort="alphabetical")
+        self.assertEqual([item.label for item in items], ["cat", "rose"])
+
     def test_category_filter_returns_only_matching_category(self):
         items = self.service.get_user_collection(user_id=1, category="Pflanze")
         self.assertEqual([item.label for item in items], ["rose"])
@@ -172,6 +186,33 @@ class CollectionServiceTests(unittest.TestCase):
     def test_detail_lookup_does_not_return_entry_for_other_user(self):
         with self.assertRaises(CollectionEntryNotFound):
             self.service.get_collection_entry_detail(user_id=1, entry_id=3)
+
+    def test_update_category_for_owner_returns_updated_detail(self):
+        detail = self.service.update_collection_entry_category(
+            user_id=1,
+            entry_id=1,
+            category="Tiere",
+        )
+
+        self.assertEqual(detail.category, "Tiere")
+        self.assertEqual(self.cards[0].category, "Tiere")
+
+    def test_update_category_does_not_update_other_users_entry(self):
+        with self.assertRaises(CollectionEntryNotFound):
+            self.service.update_collection_entry_category(
+                user_id=1,
+                entry_id=3,
+                category="Tiere",
+            )
+        self.assertEqual(self.cards[2].category, "Nahrung")
+
+    def test_update_category_rejects_invalid_category(self):
+        with self.assertRaises(InvalidCollectionCategory):
+            self.service.update_collection_entry_category(
+                user_id=1,
+                entry_id=1,
+                category="ANIMAL",
+            )
 
 
 if __name__ == "__main__":

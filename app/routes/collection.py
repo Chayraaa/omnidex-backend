@@ -60,3 +60,24 @@ def get_collection_entry_detail(user: User, entryId: int):
         return {"error": "Collection entry not found"}, 404
 
     return entry.to_dict(), 200
+
+
+@collection.route("/me/<int:entryId>/category", methods=["PATCH"])
+@login_required
+@validate
+def update_collection_entry_category(user: User, entryId: int):
+    data = request.get_json() or {}
+    category = data.get("category")
+
+    try:
+        entry = current_app.collection_service.update_collection_entry_category(
+            user_id=user.id,
+            entry_id=entryId,
+            category=category,
+        )
+    except InvalidCollectionCategory as exc:
+        return {"error": str(exc)}, 400
+    except CollectionEntryNotFound:
+        return {"error": "Collection entry not found"}, 404
+
+    return entry.to_dict(), 200

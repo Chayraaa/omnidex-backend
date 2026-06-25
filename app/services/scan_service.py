@@ -16,18 +16,29 @@ from app.services.scan_errors import (
 from app.services.summary_errors import SummaryError
 from app.services.summary_service import SummaryService
 from app.services.scan_errors import ScanCreationFailed
+from app.services.category_service import CategoryService
 
 
 class ScanService:
     FALLBACK_CARD_SUMMARY = "No short description is currently available."
 
-    def __init__(self, recognition_service, wiki_service, summary_service, image_storage, card_repo, base_url: str):
+    def __init__(
+        self,
+        recognition_service,
+        wiki_service,
+        summary_service,
+        image_storage,
+        card_repo,
+        base_url: str,
+        category_service=None,
+    ):
         self.recognition_service = recognition_service
         self.wiki_service = wiki_service
         self.summary_service = summary_service
         self.image_storage = image_storage
         self.card_repo = card_repo
         self.base_url = base_url.rstrip("/")
+        self.category_service = category_service or CategoryService()
 
     def create_scan(self, user_id: int, image_input: bytes) -> ScanResultDto:
         if user_id <= 0:
@@ -37,6 +48,11 @@ class ScanService:
 
         recognition_result = self._recognize_image(image_input)
         description, knowledge_enriched = self._get_knowledge(recognition_result.label)
+        category_assignment = self.category_service.assign_category(
+            label=recognition_result.label,
+            category_hint=recognition_result.category_hint,
+            wiki_text=description,
+        )
         card_summary, summary_generated_by_ai = self._get_card_summary(recognition_result.label, description)
 
         card_id, image_reference, created_at = self._persist_card(
@@ -48,6 +64,7 @@ class ScanService:
             description=description,
             source_title=recognition_result.label if knowledge_enriched else None,
             source_url=self._build_wikipedia_url(recognition_result.label) if knowledge_enriched else None,
+            category=category_assignment.category,
             alternatives=[
                 {"label": alternative.label, "confidence": alternative.confidence}
                 for alternative in recognition_result.alternatives
@@ -58,6 +75,7 @@ class ScanService:
             label=recognition_result.label,
             confidence=recognition_result.confidence,
             category_hint=recognition_result.category_hint,
+            category=category_assignment.category,
             alternatives=[
                 ScanAlternativeDto(label=alternative.label, confidence=alternative.confidence)
                 for alternative in recognition_result.alternatives
@@ -144,6 +162,7 @@ class ScanService:
         description: str,
         source_title: str | None,
         source_url: str | None,
+        category: str,
         alternatives: list[dict],
     ) -> tuple[int, str, str | None]:
         key: str | None = None
@@ -162,7 +181,7 @@ class ScanService:
                 name=name,
                 image_key=key,
                 card_summary=card_summary,
-                category="Unbekannt",
+                category=category,
                 confidence=confidence,
                 description=description,
                 source_title=source_title,

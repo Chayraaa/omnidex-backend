@@ -14,7 +14,7 @@ from app.services.collection_errors import (
 
 
 class CollectionService:
-    ALLOWED_SORTS = {"newest", "oldest"}
+    ALLOWED_SORTS = {"newest", "oldest", "alphabetical"}
     ALLOWED_CATEGORIES = {
         "Pflanze",
         "Insekten",
@@ -76,6 +76,30 @@ class CollectionService:
         if card is None:
             raise CollectionEntryNotFound()
 
+        return self._to_detail_dto(card)
+
+    def update_collection_entry_category(
+        self,
+        user_id: int,
+        entry_id: int,
+        category: str,
+    ) -> CollectionEntryDetailDto:
+        self._validate_user(user_id)
+        if entry_id <= 0:
+            raise CollectionEntryNotFound()
+        self._validate_category(category)
+
+        card = self.collection_repo.update_category_for_user(
+            user_id=user_id,
+            entry_id=entry_id,
+            category=category,
+        )
+        if card is None:
+            raise CollectionEntryNotFound()
+
+        return self._to_detail_dto(card)
+
+    def _to_detail_dto(self, card) -> CollectionEntryDetailDto:
         return CollectionEntryDetailDto(
             id=card.id,
             label=card.name,
