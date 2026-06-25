@@ -27,3 +27,5 @@ class SqlUnitOfWork:
         self.image_storage: ImageStorageProtocol = MinioImageStorage("images")
         self.refresh_token_repo: RefreshTokenRepositoryProtocol = SqlRefreshTokenRepo()
         self.notification_repo: NotificationRepoProtocol = SqlNotificationRepo()
+        self.card_repo: CardRepoProtocol = SqlCardRepo()
+        self.collection_repo: CollectionRepoProtocol = SqlCollectionRepo()

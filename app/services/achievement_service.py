@@ -1,8 +1,8 @@
-from domain_models.achievement import Achievement
-from domain_models.user import User
-from domain_models.user_achievements import UserAchievement
-from repositories.interfaces.storage.achievement_repo_protocol import AchievementRepoProtocol
-from repositories.interfaces.storage.user_achievements_repo_protocol import UserAchievementRepoProtocol
+from app.domain_models.achievement import Achievement
+from app.domain_models.user import User
+from app.domain_models.user_achievements import UserAchievement
+from app.repositories.interfaces.storage.achievement_repo_protocol import AchievementRepoProtocol
+from app.repositories.interfaces.storage.user_achievements_repo_protocol import UserAchievementRepoProtocol
 
 
 class AchievementService:
