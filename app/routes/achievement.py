@@ -1,7 +1,6 @@
 from flask import Blueprint, jsonify, request
 from app import login_required, validate
-from database_models.achievement_model import AchievementModel
-from services.achievement_service import AchievementService
+from app.services.achievement_service import AchievementService
 
 achievements = Blueprint("achievements", __name__)
 

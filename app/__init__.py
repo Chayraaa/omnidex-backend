@@ -116,7 +116,7 @@ def setup_services(app: Flask):
     app.password_service = PasswordService()
     # This is a user management service that you can give different implementations to
     # A service could also take another service as a dependency. Though make sure to prevent circular dependencies.
-    app.user_service = UserService(storage_unit_of_work.user_repo)
+    app.user_service = UserService(storage_unit_of_work.user_repo, storage_unit_of_work.friends_repo)
     app.auth_service = AuthService(storage_unit_of_work.user_repo, storage_unit_of_work.refresh_token_repo)
     app.image_service = ImageService(storage_unit_of_work.image_storage, storage_unit_of_work.image_repo,
                                      base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"))
@@ -151,23 +151,23 @@ def setup_services(app: Flask):
 # Add all the routes here (see health as example)
 def setup_routes(app: Flask):
     from .routes.health import health
-    app.register_blueprint(health, url_prefix="/api/status")
+    app.register_blueprint(health, url_prefix="/v1/status")
     from .routes.user import users
-    app.register_blueprint(users, url_prefix="/api/users")
+    app.register_blueprint(users, url_prefix="/v1/users")
     from .routes.scan import scan
-    app.register_blueprint(scan, url_prefix="/api/scan")
+    app.register_blueprint(scan, url_prefix="/v1/scan")
     from .routes.image import image
-    app.register_blueprint(image, url_prefix="/api/image")
+    app.register_blueprint(image, url_prefix="/v1/image")
     from .routes.wiki import wiki
-    app.register_blueprint(wiki, url_prefix="/api/wiki")
+    app.register_blueprint(wiki, url_prefix="/v1/wiki")
     from .routes.collection import collection
-    app.register_blueprint(collection, url_prefix="/api/collections")
+    app.register_blueprint(collection, url_prefix="/v1/collections")
     from .routes.achievement import achievements
-    app.register_blueprint(achievements, url_prefix="/api/achievements")
+    app.register_blueprint(achievements, url_prefix="/v1/achievements")
     from .routes.friends import friends
-    app.register_blueprint(friends, url_prefix="/api/friends")
+    app.register_blueprint(friends, url_prefix="/v1/friends")
     from .routes.notifications import notifications
-    app.register_blueprint(notifications, url_prefix="/api/notifications")
+    app.register_blueprint(notifications, url_prefix="/v1/notifications")
 
 
 ########################
