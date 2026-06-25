@@ -10,14 +10,24 @@ from openapi_core.exceptions import OpenAPIError
 from openapi_core.validation.request.exceptions import InvalidRequestBody
 from openapi_core.validation.schemas.exceptions import InvalidSchemaValue
 from sqlalchemy import inspect
+from sqlalchemy import text
 
 from app.repositories.units_of_work.sql_unit import SqlUnitOfWork
 from app.services.auth_service import AuthService
 from app.services.image_service import ImageService
 from app.services.password_service import PasswordService
 from app.services.google_oauth_service import GoogleOauthService
+from app.services.recognition_service import RecognitionService
+from app.services.scan_service import ScanService
+from app.services.collection_service import CollectionService
+from app.services.summary_service import SummaryService
+from app.services.category_service import CategoryService
 from app.services.user_service import UserService
+from app.repositories.external.wiki_repo import WikiRepo
+from app.repositories.external.lisa_api_client import LisaApiClient
+from app.repositories.external.lisa_summary_api_client import LisaSummaryApiClient
 from app.services.friends_service import FriendsService
+from app.repositories.external.lisa_category_api_client import LisaCategoryApiClient
 from app.extensions import db
 from openapi_core import OpenAPI
 from app.services.notification_service import NotificationService
@@ -25,6 +35,7 @@ from app.repositories.storage.sql_notification_repo import SqlNotificationRepo
 
 # Add all the db database_models here
 from app.database_models.user_model import UserModel
+from app.services.wiki_service import WikiService
 from app.database_models.achievement_model import AchievementModel
 from app.database_models.card_model import CardModel
 from app.database_models.refresh_token_model import RefreshTokenModel
@@ -105,13 +116,34 @@ def setup_services(app: Flask):
     app.password_service = PasswordService()
     # This is a user management service that you can give different implementations to
     # A service could also take another service as a dependency. Though make sure to prevent circular dependencies.
-    notification_repo = SqlNotificationRepo()
-    app.notification_service = NotificationService(notification_repo)
-    app.user_service = UserService(storage_unit_of_work.user_repo, storage_unit_of_work.friends_repo)
-    app.friends_service = FriendsService( storage_unit_of_work.friends_repo, storage_unit_of_work.user_repo, app.notification_service)
+    app.user_service = UserService(storage_unit_of_work.user_repo)
     app.auth_service = AuthService(storage_unit_of_work.user_repo, storage_unit_of_work.refresh_token_repo)
     app.image_service = ImageService(storage_unit_of_work.image_storage, storage_unit_of_work.image_repo,
                                      base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"))
+    app.google_oauth_service = GoogleOauthService(
+        storage_unit_of_work.user_repo,
+        storage_unit_of_work.refresh_token_repo,
+    )
+    app.wiki_service = WikiService(WikiRepo())
+    lisa_adapter = LisaApiClient()
+    lisa_summary_adapter = LisaSummaryApiClient()
+    lisa_category_adapter = LisaCategoryApiClient()
+    app.recognition_service = RecognitionService(lisa_adapter)
+    app.summary_service = SummaryService(lisa_summary_adapter)
+    app.category_service = CategoryService(lisa_category_adapter)
+    app.scan_service = ScanService(
+        app.recognition_service,
+        app.wiki_service,
+        app.summary_service,
+        storage_unit_of_work.image_storage,
+        storage_unit_of_work.card_repo,
+        base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"),
+        category_service=app.category_service,
+    )
+    app.collection_service = CollectionService(
+        storage_unit_of_work.collection_repo,
+        base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"),
+    )
     app.google_oauth_service = GoogleOauthService(storage_unit_of_work.user_repo,
                                                   storage_unit_of_work.refresh_token_repo)
 
@@ -126,6 +158,12 @@ def setup_routes(app: Flask):
     app.register_blueprint(scan, url_prefix="/api/scan")
     from .routes.image import image
     app.register_blueprint(image, url_prefix="/api/image")
+    from .routes.wiki import wiki
+    app.register_blueprint(wiki, url_prefix="/api/wiki")
+    from .routes.collection import collection
+    app.register_blueprint(collection, url_prefix="/api/collections")
+    from .routes.achievement import achievements
+    app.register_blueprint(achievements, url_prefix="/api/achievements")
     from .routes.friends import friends
     app.register_blueprint(friends, url_prefix="/api/friends")
     from .routes.notifications import notifications

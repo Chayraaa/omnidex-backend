@@ -7,7 +7,9 @@ class AchievementModel(db.Model):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False, unique=True)
-    description: Mapped[str | None] = mapped_column(nullable=True)
+    required: Mapped[int] = mapped_column(nullable=False, default=20)
+    achievementReward: Mapped[int] = mapped_column(nullable=False, default=100)
+    icon: Mapped[str] = mapped_column(nullable=True)
 
     user_achievements: Mapped[list["UserAchievementModel"]] = relationship(
         "UserAchievementModel",

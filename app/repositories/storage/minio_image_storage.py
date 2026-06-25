@@ -34,6 +34,9 @@ class MinioImageStorage:
 
         return key
 
+    def delete_image(self, key: str) -> None:
+        self.client.remove_object(self.bucket, key)
+
     def get_image(self, key: str):
         response = self.client.get_object(self.bucket, key)
         try:

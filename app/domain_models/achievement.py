@@ -5,4 +5,6 @@ from dataclasses import dataclass
 class Achievement:
     id: int
     name: str
-    description: str | None = None
+    required: int
+    achievementReward: int
+    icon: str

@@ -155,6 +155,7 @@ components:
         - label
         - confidence
         - alternatives
+        - category
         - description
         - card_summary
         - knowledge_enriched
@@ -175,6 +176,20 @@ components:
           type: string
           nullable: true
           example: PLANT
+        category:
+          type: string
+          description: Final Omnidex category assigned by AI or fallback logic.
+          enum:
+            - Pflanze
+            - Insekten
+            - Tiere
+            - Nahrung
+            - Unbekannt
+            - Technik
+            - Mechanik
+            - Gestein
+            - Gegenstände
+          example: Pflanze
         alternatives:
           type: array
           items:
@@ -241,7 +256,7 @@ components:
         image_url:
           type: string
           nullable: true
-          example: http://127.0.0.1:5000/api/image/cards/1/abc.jpeg
+          example: http://127.0.0.1:5000/v1/image/cards/1/abc.jpeg
         created_at:
           type: string
           nullable: true
@@ -331,7 +346,7 @@ components:
         icon:
           type: string
           nullable: false
-          example: http://127.0.0.1:5000/api/image/cards/1/abc.jpeg
+          example: http://127.0.0.1:5000/v1/image/cards/1/abc.jpeg
 
 
     achievementProgress:
@@ -358,7 +373,7 @@ security:
   - bearerAuth: [ ]
 
 paths:
-  /api/users/create:
+  /v1/users/create:
     post:
       summary: Create a new user
       description: Creates a new user with a username, email and password.
@@ -410,7 +425,7 @@ paths:
                     type: string
                     example: User already exists
 
-  /api/users/login:
+  /v1/users/login:
     post:
       summary: Login user
       description: Authenticates a local user or refreshes an existing session and returns access plus refresh tokens.
@@ -472,8 +487,53 @@ paths:
                   message:
                     type: string
                     example: Invalid credentials
+  /api/users/{user_id}:
+    get:
+      summary: Get user by ID
+      description: Returns a user by their numeric ID.
+      tags:
+        - Users
+      security: [ ]
 
-  /api/users/google/login:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the user
+
+      responses:
+        "200":
+          description: User found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                      email:
+                        type: string
+                      friendcode:
+                        type: string
+
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User not found
+  /v1/users/google/login:
     get:
       summary: Redirect to Google OAuth
       description: Redirects user to Google login page.
@@ -484,7 +544,7 @@ paths:
         "302":
           description: Redirect to Google OAuth
 
-  /api/users/google/callback:
+  /v1/users/google/callback:
     get:
       summary: Google OAuth callback
       description: Handles Google OAuth response and returns access plus refresh tokens.
@@ -521,7 +581,7 @@ paths:
                     type: string
                     example: Login session expired or invalid state. Please try again.
 
-  /api/status/health:
+  /v1/status/health:
     get:
       summary: "Health check"
       description: "Responds with a simple OK"
@@ -540,7 +600,7 @@ paths:
                     type: string
                     example: "OK"
 
-  /api/scan/login_test:
+  /v1/scan/login_test:
     get:
       summary: "Login test"
       description: "Responds with the user name"
@@ -558,7 +618,7 @@ paths:
                     type: string
                     example: "Hallo alice"
 
-  /api/scan:
+  /v1/scan:
     post:
       summary: Create scan result from image
       description: Recognizes the uploaded image and enriches it with Wikipedia information.
@@ -593,7 +653,7 @@ paths:
         "503":
           description: Recognition service unavailable
 
-  /api/scan/recognize:
+  /v1/scan/recognize:
     post:
       summary: Recognize object from image via LISA
       description: Sends image data to recognition provider and returns normalized recognition result.
@@ -647,7 +707,7 @@ paths:
         "503":
           description: Recognition service unavailable
 
-  /api/users/set_profile_picture:
+  /v1/users/set_profile_picture:
     post:
       summary: Set user profile picture
       description: Uploads and sets the profile picture for the authenticated user.
@@ -686,7 +746,7 @@ paths:
         "401":
           description: Unauthorized
 
-  /api/users/get_profile_picture/{user_id}:
+  /v1/users/get_profile_picture/{user_id}:
     get:
       summary: Get user profile picture URL
       description: Returns a temporary URL to access the user's profile picture.
@@ -721,7 +781,7 @@ paths:
         "404":
           description: User or profile picture not found
 
-  /api/image/{key}:
+  /v1/image/{key}:
     get:
       summary: Get image by key
       security: [ ]
@@ -741,7 +801,7 @@ paths:
                 type: string
                 format: binary
 
-  /api/collections/me:
+  /v1/collections/me:
     get:
       summary: List the authenticated user's saved collection entries
       tags:
@@ -758,9 +818,9 @@ paths:
           required: false
           schema:
             type: string
-            enum: [newest, oldest]
+            enum: [newest, oldest, alphabetical]
             default: newest
-          description: Sort order by scan creation time.
+          description: Sort order by scan creation time or object label.
         - in: query
           name: category
           required: false
@@ -815,7 +875,7 @@ paths:
         "401":
           description: Unauthorized.
 
-  /api/collections/me/{entryId}:
+  /v1/collections/me/{entryId}:
     get:
       summary: Get details of a single collection entry owned by the authenticated user
       tags:
@@ -846,9 +906,71 @@ paths:
                   error:
                     type: string
 
+  /api/collections/me/{entryId}/category:
+    patch:
+      summary: Update the category of one collection entry owned by the authenticated user
+      tags:
+        - Collection
+      parameters:
+        - in: path
+          name: entryId
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - category
+              properties:
+                category:
+                  type: string
+                  enum:
+                    - Pflanze
+                    - Insekten
+                    - Tiere
+                    - Nahrung
+                    - Unbekannt
+                    - Technik
+                    - Mechanik
+                    - Gestein
+                    - Gegenstände
+                  example: Tiere
+      responses:
+        "200":
+          description: Collection entry category updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/collectionEntryDetail"
+        "400":
+          description: Invalid category.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "401":
+          description: Unauthorized.
+        "404":
+          description: Collection entry not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
   # Nia changes start!!
 
-  /api/entries/{entryId}:
+  /v1/entries/{entryId}:
     get:
       summary: Retrieve a single entry by entryId
       tags:
@@ -932,7 +1054,7 @@ paths:
           description: Internal server error
 
 
-  /api/entries/categories/{categoryId}:
+  /v1/entries/categories/{categoryId}:
     get:
       summary: Retrieve all entrys of said category by categoryId
       tags:
@@ -960,7 +1082,7 @@ paths:
           description: Internal server error
 
 
-  /api/entries:
+  /v1/entries:
     post:
       summary: Create a new entry
       tags:
@@ -984,7 +1106,7 @@ paths:
           description: Internal server error
 
 
-  /api/entries/{userId}/entries:
+  /v1/entries/{userId}/entries:
     get:
       summary: Retrieve all entries discovered by a user by userId
       tags:
@@ -1012,7 +1134,7 @@ paths:
           description: Internal server error
 
 
-  /api/entries/{userId}/categories/{categoryId}:
+  /v1/entries/{userId}/categories/{categoryId}:
     get:
       summary: Retrieve user entries filtered by category
       tags:
@@ -1046,7 +1168,7 @@ paths:
 
   # And now.. more changes meow...
 
-  /api/users/{userId}:
+  /v1/users/{userId}:
 
     get:
       summary: Retrieve a user by userId
@@ -1099,7 +1221,7 @@ paths:
 
 
 
-  /api/friends/requests/send/{friend_code}:
+  /v1/friends/requests/send/{friend_code}:
     post:
       summary: Send friend request
       tags:
@@ -1116,7 +1238,7 @@ paths:
         "400":
           description: Could not send friend request
 
-  /api/friends/requests/accept/{sender_id}:
+  /v1/friends/requests/accept/{sender_id}:
     post:
       summary: Accept friend request
       tags:
@@ -1133,7 +1255,7 @@ paths:
         "400":
           description: Could not accept request
 
-  /api/friends/requests/decline/{sender_id}:
+  /v1/friends/requests/decline/{sender_id}:
     post:
       summary: Decline friend request
       tags:
@@ -1150,7 +1272,7 @@ paths:
         "400":
           description: Could not decline request
 
-  /api/friends/requests:
+  /v1/friends/requests:
     get:
       summary: Get incoming friend requests
       tags:
@@ -1175,7 +1297,7 @@ paths:
                         status:
                           type: string
 
-  /api/friends/{user_id}:
+  /v1/friends/{user_id}:
     delete:
       summary: Remove friend
       tags:
@@ -1192,7 +1314,7 @@ paths:
         "400":
           description: Could not remove friend
 
-  /api/friends:
+  /v1/friends:
     get:
       summary: Get friend list
       tags:
@@ -1218,7 +1340,7 @@ paths:
                           type: string
 
 
-  /api/achievements:
+  /v1/achievements:
     get:
       summary: Retrieve all achievements
       tags:
@@ -1237,7 +1359,7 @@ paths:
         "500":
           description: Internal server error
 
-  /api/achievements/progress/{userId}:
+  /v1/achievements/progress/{userId}:
     get:
       summary: Get user progress
       tags:
@@ -1297,7 +1419,7 @@ paths:
 
 
 
-  /api/users/edit:
+  /v1/users/edit:
     put:
       summary: Edit current user profile
       tags:
@@ -1324,7 +1446,7 @@ paths:
 
 
 
-  /api/users/experience/{userId}:
+  /v1/users/experience/{userId}:
     get:
       summary: Retrieve user experience
       tags:

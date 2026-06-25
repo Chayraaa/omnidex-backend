@@ -11,5 +11,5 @@ class CategoryModel(db.Model):
     description: Mapped[str | None] = mapped_column(nullable=True, default="")
 
     cards: Mapped[list["CardModel"]] = relationship(
-        back_populates="category"
+        back_populates="category_ref"
     )
