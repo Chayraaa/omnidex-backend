@@ -472,7 +472,52 @@ paths:
                   message:
                     type: string
                     example: Invalid credentials
+  /api/users/{user_id}:
+    get:
+      summary: Get user by ID
+      description: Returns a user by their numeric ID.
+      tags:
+        - Users
+      security: [ ]
 
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the user
+
+      responses:
+        "200":
+          description: User found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                      email:
+                        type: string
+                      friendcode:
+                        type: string
+
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User not found
   /api/users/google/login:
     get:
       summary: Redirect to Google OAuth

@@ -25,8 +25,11 @@ from app.services.user_service import UserService
 from app.repositories.external.wiki_repo import WikiRepo
 from app.repositories.external.lisa_api_client import LisaApiClient
 from app.repositories.external.lisa_summary_api_client import LisaSummaryApiClient
+from app.services.friends_service import FriendsService
 from app.extensions import db
 from openapi_core import OpenAPI
+from app.services.notification_service import NotificationService
+from app.repositories.storage.sql_notification_repo import SqlNotificationRepo
 
 # Add all the db database_models here
 from app.database_models.user_model import UserModel
@@ -95,156 +98,6 @@ def setup_database(app: Flask):
             else:
                 app.logger.info(f"Table {table_name} already exists")
 
-        # Lightweight schema sync for environments without migrations.
-        # Adds new columns when the table already exists.
-        if inspector.has_table("cards"):
-            existing = {col["name"] for col in inspector.get_columns("cards")}
-            if "card_summary" not in existing:
-                try:
-                    db.session.execute(text("ALTER TABLE cards ADD COLUMN card_summary VARCHAR"))
-                    db.session.commit()
-                    app.logger.info("Added cards.card_summary column")
-                except Exception:
-                    db.session.rollback()
-            if "category" not in existing:
-                try:
-                    db.session.execute(text("ALTER TABLE cards ADD COLUMN category VARCHAR"))
-                    db.session.commit()
-                    app.logger.info("Added cards.category column")
-                except Exception:
-                    db.session.rollback()
-            if "category_id" not in existing:
-                try:
-                    db.session.execute(text("ALTER TABLE cards ADD COLUMN category_id INTEGER"))
-                    db.session.commit()
-                    app.logger.info("Added cards.category_id column")
-                except Exception:
-                    db.session.rollback()
-            if "confidence" not in existing:
-                try:
-                    db.session.execute(text("ALTER TABLE cards ADD COLUMN confidence DOUBLE PRECISION"))
-                    db.session.commit()
-                    app.logger.info("Added cards.confidence column")
-                except Exception:
-                    db.session.rollback()
-            if "description" not in existing:
-                try:
-                    db.session.execute(text("ALTER TABLE cards ADD COLUMN description TEXT"))
-                    db.session.commit()
-                    app.logger.info("Added cards.description column")
-                except Exception:
-                    db.session.rollback()
-            if "source_title" not in existing:
-                try:
-                    db.session.execute(text("ALTER TABLE cards ADD COLUMN source_title VARCHAR"))
-                    db.session.commit()
-                    app.logger.info("Added cards.source_title column")
-                except Exception:
-                    db.session.rollback()
-            if "source_url" not in existing:
-                try:
-                    db.session.execute(text("ALTER TABLE cards ADD COLUMN source_url VARCHAR"))
-                    db.session.commit()
-                    app.logger.info("Added cards.source_url column")
-                except Exception:
-                    db.session.rollback()
-            if "alternatives_json" not in existing:
-                try:
-                    db.session.execute(text("ALTER TABLE cards ADD COLUMN alternatives_json TEXT"))
-                    db.session.commit()
-                    app.logger.info("Added cards.alternatives_json column")
-                except Exception:
-                    db.session.rollback()
-            if "created_at" not in existing:
-                try:
-                    db.session.execute(text("ALTER TABLE cards ADD COLUMN created_at TIMESTAMP"))
-                    db.session.execute(text("UPDATE cards SET created_at = NOW() WHERE created_at IS NULL"))
-                    db.session.execute(text("ALTER TABLE cards ALTER COLUMN created_at SET NOT NULL"))
-                    db.session.execute(text("ALTER TABLE cards ALTER COLUMN created_at SET DEFAULT NOW()"))
-                    db.session.commit()
-                    app.logger.info("Added cards.created_at column")
-                except Exception:
-                    db.session.rollback()
-
-            unique_constraints = inspector.get_unique_constraints("cards")
-            has_global_name_unique = any(constraint.get("column_names") == ["name"] for constraint in unique_constraints)
-            has_user_name_unique = any(
-                constraint.get("column_names") == ["user_id", "name"] for constraint in unique_constraints
-            )
-
-            if has_global_name_unique:
-                try:
-                    db.session.execute(text("ALTER TABLE cards DROP CONSTRAINT IF EXISTS cards_name_key"))
-                    db.session.commit()
-                    app.logger.info("Dropped legacy cards.name unique constraint")
-                except Exception:
-                    db.session.rollback()
-
-            if not has_user_name_unique:
-                try:
-                    db.session.execute(
-                        text("ALTER TABLE cards ADD CONSTRAINT uq_cards_user_id_name UNIQUE (user_id, name)")
-                    )
-                    db.session.commit()
-                    app.logger.info("Added cards(user_id, name) unique constraint")
-                except Exception:
-                    db.session.rollback()
-
-        if inspector.has_table("users"):
-            existing = {col["name"] for col in inspector.get_columns("users")}
-            if "oauth_method" not in existing:
-                try:
-                    db.session.execute(text("ALTER TABLE users ADD COLUMN oauth_method VARCHAR"))
-                    db.session.execute(text("UPDATE users SET oauth_method = 'local' WHERE oauth_method IS NULL"))
-                    db.session.execute(text("ALTER TABLE users ALTER COLUMN oauth_method SET NOT NULL"))
-                    db.session.execute(text("ALTER TABLE users ALTER COLUMN oauth_method SET DEFAULT 'local'"))
-                    db.session.commit()
-                    app.logger.info("Added users.oauth_method column")
-                except Exception:
-                    db.session.rollback()
-            if "profile_picture_key" not in existing:
-                try:
-                    db.session.execute(text("ALTER TABLE users ADD COLUMN profile_picture_key VARCHAR"))
-                    db.session.execute(
-                        text("UPDATE users SET profile_picture_key = '' WHERE profile_picture_key IS NULL")
-                    )
-                    db.session.execute(text("ALTER TABLE users ALTER COLUMN profile_picture_key SET NOT NULL"))
-                    db.session.execute(text("ALTER TABLE users ALTER COLUMN profile_picture_key SET DEFAULT ''"))
-                    db.session.commit()
-                    app.logger.info("Added users.profile_picture_key column")
-                except Exception:
-                    db.session.rollback()
-            if "friend_code" not in existing:
-                try:
-                    db.session.execute(text("ALTER TABLE users ADD COLUMN friend_code VARCHAR"))
-                    db.session.execute(
-                        text(
-                            "UPDATE users "
-                            "SET friend_code = SUBSTRING(MD5(RANDOM()::text || CLOCK_TIMESTAMP()::text) FROM 1 FOR 8) "
-                            "WHERE friend_code IS NULL"
-                        )
-                    )
-                    db.session.execute(text("ALTER TABLE users ALTER COLUMN friend_code SET NOT NULL"))
-                    db.session.commit()
-                    app.logger.info("Added users.friend_code column")
-                except Exception:
-                    db.session.rollback()
-
-            unique_constraints = inspector.get_unique_constraints("users")
-            has_friend_code_unique = any(
-                constraint.get("column_names") == ["friend_code"] for constraint in unique_constraints
-            )
-
-            if not has_friend_code_unique:
-                try:
-                    db.session.execute(
-                        text("ALTER TABLE users ADD CONSTRAINT uq_users_friend_code UNIQUE (friend_code)")
-                    )
-                    db.session.commit()
-                    app.logger.info("Added users.friend_code unique constraint")
-                except Exception:
-                    db.session.rollback()
-
 
 ########################
 # REGULAR EDITING HERE #
@@ -265,27 +118,8 @@ def setup_services(app: Flask):
     app.auth_service = AuthService(storage_unit_of_work.user_repo, storage_unit_of_work.refresh_token_repo)
     app.image_service = ImageService(storage_unit_of_work.image_storage, storage_unit_of_work.image_repo,
                                      base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"))
-    app.google_oauth_service = GoogleOauthService(
-        storage_unit_of_work.user_repo,
-        storage_unit_of_work.refresh_token_repo,
-    )
-    app.wiki_service = WikiService(WikiRepo())
-    lisa_adapter = LisaApiClient()
-    lisa_summary_adapter = LisaSummaryApiClient()
-    app.recognition_service = RecognitionService(lisa_adapter)
-    app.summary_service = SummaryService(lisa_summary_adapter)
-    app.scan_service = ScanService(
-        app.recognition_service,
-        app.wiki_service,
-        app.summary_service,
-        storage_unit_of_work.image_storage,
-        storage_unit_of_work.card_repo,
-        base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"),
-    )
-    app.collection_service = CollectionService(
-        storage_unit_of_work.collection_repo,
-        base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"),
-    )
+    app.google_oauth_service = GoogleOauthService(storage_unit_of_work.user_repo,
+                                                  storage_unit_of_work.refresh_token_repo)
 
 
 # Add all the routes here (see health as example)
@@ -304,6 +138,10 @@ def setup_routes(app: Flask):
     app.register_blueprint(collection, url_prefix="/api/collections")
     from .routes.achievement import achievements
     app.register_blueprint(achievements, url_prefix="/api/achievements")
+    from .routes.friends import friends
+    app.register_blueprint(friends, url_prefix="/api/friends")
+    from .routes.notifications import notifications
+    app.register_blueprint(notifications, url_prefix="/api/notifications")
 
 
 ########################
@@ -316,6 +154,7 @@ def login_required(f):
 
         # Get the token from the Authorization header
         token = request.headers.get("Authorization")
+        print(request.headers)
         if not token:
             return jsonify({"error": "Token missing"}), 401
 
