@@ -40,12 +40,17 @@ def login():
     if not res:
         return {"message": "Invalid credentials."}, 401
 
-    token, refresh = res
+    token, refresh, user = res
 
     return {
         "message": "Login successful. Use token for authentication.",
         "access_token": token,
         "refresh_token": refresh,
+        "user": {
+            "id": user.id,          
+            "name": user.name,
+            "email": user.email
+        }
     }, 200
 
 
@@ -103,10 +108,10 @@ def get_profile_picture(user_id: int):
     return {"url": url}, 200
 
 
-@users.route("/<int:user_id>", methods=["GET"])
+@users.route("/<int:userId>", methods=["GET"])
 @validate
-def get_user(user_id: int):
-    user = current_app.user_service.get_user(user_id)
+def get_user(userId: int):
+    user = current_app.user_service.get_user(userId)
 
     if not user:
         return {"message": "User not found"}, 404
@@ -119,3 +124,4 @@ def get_user(user_id: int):
             "friend_code": user.friend_code
         }
     }, 200
+

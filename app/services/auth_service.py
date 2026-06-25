@@ -34,7 +34,7 @@ class AuthService:
             hashed_token=refresh_token_hash,
         )
 
-        return access_token, refresh_token
+        return access_token, refresh_token, user
 
     def refresh_session(self, refresh_token: str) -> tuple[str, str] | None:
 

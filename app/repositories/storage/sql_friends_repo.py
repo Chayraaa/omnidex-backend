@@ -9,7 +9,10 @@ from app.services.friends_service import FriendshipStatus
 class SqlFriendsRepo:
 
     def get_friend_request(self, sender_id: int, receiver_id: int) -> Friends | None:
-        db_obj = db.session.get(FriendsModel, (sender_id, receiver_id))
+        db_obj = db.session.query(FriendsModel).filter(
+            (FriendsModel.user_id == sender_id) &
+            (FriendsModel.friend_id == receiver_id)
+        ).first()
 
         if not db_obj:
             return None
@@ -37,10 +40,10 @@ class SqlFriendsRepo:
         )
 
     def update_friend_request(self, friendship: Friends) -> Friends:
-        db_obj = db.session.get(
-            FriendsModel,
-            (friendship.user_id, friendship.friend_id)
-        )
+        db_obj = db.session.query(FriendsModel).filter(
+            (FriendsModel.user_id == friendship.user_id) &
+            (FriendsModel.friend_id == friendship.friend_id)
+        ).first()
 
         if not db_obj:
             raise ValueError("Friendship not found")
@@ -87,8 +90,6 @@ class SqlFriendsRepo:
         db.session.delete(db_obj)
         db.session.commit()
         return True
-        
-    
 
     def get_user_by_friend_code(self, friend_code: str) -> User | None:
         db_obj = UserModel.query.filter_by(friend_code=friend_code).first()
@@ -99,13 +100,13 @@ class SqlFriendsRepo:
         return User(
             id=db_obj.id,
             name=db_obj.name,
-            hashed_password=db_obj.password,   
+            hashed_password=db_obj.password,
             oauth=db_obj.oauth_method,
             profile_picture_key=db_obj.profile_picture_key,
             email=db_obj.email,
             friend_code=db_obj.friend_code,
         )
-    
+
     def delete_rejected_friend_requests(self) -> int:
         deleted_count = (
             db.session.query(FriendsModel)

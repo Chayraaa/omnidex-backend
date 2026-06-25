@@ -23,7 +23,7 @@ def get_friends_service():
 
 
 # SEND FRIEND REQUEST
-@friends.route("/request/<friend_code>", methods=["POST"])
+@friends.route("/requests/send/<friend_code>", methods=["POST"])
 @login_required
 def send_friend_request(user, friend_code):
     service = get_friends_service()
@@ -37,7 +37,7 @@ def send_friend_request(user, friend_code):
 
 
 # ACCEPT FRIEND REQUEST
-@friends.route("/accept/<int:sender_id>", methods=["POST"])
+@friends.route("/requests/accept/<int:sender_id>", methods=["POST"])
 @login_required
 def accept_friend_request(user: User, sender_id):
     service = get_friends_service()
@@ -51,7 +51,7 @@ def accept_friend_request(user: User, sender_id):
 
 
 # DECLINE FRIEND REQUEST
-@friends.route("/decline/<int:sender_id>", methods=["POST"])
+@friends.route("/requests/decline/<int:sender_id>", methods=["POST"])
 @login_required
 def decline_friend_request(user: User,sender_id):
     service = get_friends_service()
@@ -63,14 +63,32 @@ def decline_friend_request(user: User,sender_id):
 
     return jsonify({"success": True})
 
-
-# REMOVE FRIEND
-@friends.route("/<int:friend_id>", methods=["DELETE"])
+@friends.route("/requests", methods=["GET"])
 @login_required
-def remove_friend(user: User, friend_id):
+def get_incoming_requests(user: User):
     service = get_friends_service()
 
-    result = service.remove_friend(user, friend_id)
+    requests = service.get_incoming_requests(user)
+
+    return jsonify({
+        "success": True,
+        "requests": [
+            {
+                "sender_id": r["sender_id"],
+                "status": r["status"]
+            }
+            for r in requests
+        ]
+    })
+
+
+# REMOVE FRIEND
+@friends.route("/<int:user_id>", methods=["DELETE"])
+@login_required
+def remove_friend(user: User, user_id):
+    service = get_friends_service()
+
+    result = service.remove_friend(user, user_id)
 
     if not result:
         return jsonify({"success": False, "message": "Could not remove friend"}), 400
@@ -90,9 +108,8 @@ def get_friends(user:User):
         "success": True,
         "friends": [
             {
-                "user_id": f.user_id,
-                "friend_id": f.friend_id,
-                "status": f.status
+                "friend_id": f["friend_id"],
+                "status": f["status"]
             }
             for f in friends
         ]

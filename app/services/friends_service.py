@@ -47,29 +47,21 @@ class FriendsService:
     def accept_friend_request(self, receiver: User, sender_id: int):
         friendship = self.friends_repo.get_friend_request(sender_id, receiver.id)
 
-        if not friendship:
-            return False
-
-        if friendship.status != FriendshipStatus.PENDING.value:
+        if not friendship or friendship.status != FriendshipStatus.PENDING.value:
             return False
 
         friendship.status = FriendshipStatus.ACCEPTED.value
-
         self.friends_repo.update_friend_request(friendship)
         return True
+
 
 
     # DECLINE REQUEST
     def decline_friend_request(self, receiver: User, sender_id: int):
         friendship = self.friends_repo.get_friend_request(sender_id, receiver.id)
 
-        if not friendship:
+        if not friendship or friendship.status != FriendshipStatus.PENDING.value:
             return False
-
-        if friendship.status != FriendshipStatus.PENDING.value:
-            return False
-
-        friendship.status = FriendshipStatus.REJECTED.value
 
         self.friends_repo.delete_friendship(sender_id, receiver.id)
         return True
@@ -82,7 +74,35 @@ class FriendsService:
     def get_friends(self, user: User):
         friendships = self.friends_repo.get_friendships(user.id)
 
+        result = []
+
+        for f in friendships:
+            if f.status != FriendshipStatus.ACCEPTED.value:
+                continue
+
+            other_user_id = (
+                f.friend_id if f.user_id == user.id else f.user_id
+            )
+
+            result.append({
+                "friend_id": other_user_id,
+                "status": f.status
+            })
+
+        return result
+    
+    # GET INCOMING REQUESTS (FIXED TO MATCH ROUTE)
+    def get_incoming_requests(self, user: User):
+        friendships = self.friends_repo.get_friendships(user.id)
+
         return [
-            f for f in friendships
+            {
+                "sender_id": f.user_id,
+                "status": f.status
+            }
+            for f in friendships
+            if f.friend_id == user.id and f.status == FriendshipStatus.PENDING.value
         ]
+    
+
 
