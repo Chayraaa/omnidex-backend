@@ -314,8 +314,6 @@ components:
           - required
           - achievementReward
           - icon
-          - isDone
-          - currentProgress
       properties:
         id:
           type: integer
@@ -1200,8 +1198,7 @@ paths:
               schema:
                 type: array
                 items:
-                  schema:
-                    $ref: "#/components/schemas/achievement"
+                  $ref: "#/components/schemas/achievement"
         "404":
           description: User not found
         "500":
@@ -1210,8 +1207,8 @@ paths:
   /api/achievements/progress/{userId}:
     get:
       summary: Get user progress
-      type:
-        -Achievements
+      tags:
+        - Achievements
       parameters:
         - name: userId
           in: path
@@ -1226,8 +1223,7 @@ paths:
               schema:
                 type: array
                 items:
-                  schema:
-                    $ref: "#/components/schemas/achievementProgress"
+                  $ref: "#/components/schemas/achievementProgress"
         "404":
           description: User not found
         "500":
@@ -1235,8 +1231,8 @@ paths:
 
     patch:
       summary: Edit User achievement progress
-      type:
-        -Achievements
+      tags:
+        - Achievements
       parameters:
         - name: userId
           in: path
@@ -1250,8 +1246,7 @@ paths:
             schema:
               type: array
               items:
-                schema:
-                  $ref: "#/components/schemas/achievementProgress"   
+                $ref: "#/components/schemas/achievementProgress"   
       responses:
         "200":
           description: Progress edited successfully
@@ -1260,8 +1255,7 @@ paths:
               schema:
                 type: array
                 items:
-                  schema:
-                    $ref: "#/components/schemas/achievementprogress"
+                  $ref: "#/components/schemas/achievementProgress"
         "404":
           description: User not found
         "500":
