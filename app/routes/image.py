@@ -1,14 +1,17 @@
-from flask import Blueprint, current_app, Response
+from flask import Blueprint, current_app
 import mimetypes
+
+from app.http_cache import PRIVATE_IMAGE_CACHE, bytes_response_with_etag
 
 image = Blueprint("image", __name__)
 
 @image.route("/<path:key>", methods=["GET"])
 def get_image(key):
-    response = current_app.image_service.get_image_stream(key)
+    image_data = current_app.image_service.get_image_stream(key)
     mime_type, _ = mimetypes.guess_type(key)
 
-    return Response(
-        response,
-        mimetype=mime_type or "application/octet-stream"
+    return bytes_response_with_etag(
+        image_data,
+        mimetype=mime_type or "application/octet-stream",
+        cache_control=PRIVATE_IMAGE_CACHE,
     )

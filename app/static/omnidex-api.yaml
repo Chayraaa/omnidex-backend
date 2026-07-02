@@ -12,6 +12,21 @@ components:
       scheme: bearer
       bearerFormat: JWT
 
+  headers:
+    CacheControl:
+      description: HTTP caching policy for this response.
+      schema:
+        type: string
+    ETag:
+      description: Validator for conditional requests using If-None-Match or If-Match.
+      schema:
+        type: string
+        example: '"9f86d081884c7d659a2feaa0c55ad015"'
+    Vary:
+      description: Request headers that influence the selected representation.
+      schema:
+        type: string
+
   schemas:
     entry:
       type: object
@@ -405,6 +420,9 @@ paths:
       responses:
         "201":
           description: User successfully created
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
           content:
             application/json:
               schema:
@@ -462,6 +480,9 @@ paths:
       responses:
         "200":
           description: Login successful
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
           content:
             application/json:
               schema:
@@ -543,6 +564,9 @@ paths:
       responses:
         "302":
           description: Redirect to Google OAuth
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
 
   /v1/users/google/callback:
     get:
@@ -554,6 +578,9 @@ paths:
       responses:
         "200":
           description: Login successful via Google
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
           content:
             application/json:
               schema:
@@ -591,6 +618,9 @@ paths:
       responses:
         "200":
           description: "Service is healthy"
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
           content:
             application/json:
               schema:
@@ -599,6 +629,69 @@ paths:
                   message:
                     type: string
                     example: "OK"
+
+  /v1/wiki/summary/{title}:
+    get:
+      summary: Get Wikipedia summary for an article title
+      description: Returns a public Wikipedia extract and supports HTTP caching with Cache-Control, ETag and 304 revalidation.
+      tags:
+        - Wiki
+      security: [ ]
+      parameters:
+        - in: path
+          name: title
+          required: true
+          schema:
+            type: string
+          description: Wikipedia article title.
+        - in: header
+          name: If-None-Match
+          required: false
+          schema:
+            type: string
+          description: Optional cached ETag. If it still matches, the server returns 304.
+      responses:
+        "200":
+          description: Wikipedia summary found.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
+            ETag:
+              $ref: "#/components/headers/ETag"
+            Vary:
+              $ref: "#/components/headers/Vary"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  extract:
+                    type: string
+                    example: Cats are small domesticated carnivorous mammals.
+        "304":
+          description: Cached representation is still valid.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
+            ETag:
+              $ref: "#/components/headers/ETag"
+            Vary:
+              $ref: "#/components/headers/Vary"
+        "404":
+          description: Article not found. Response may be negatively cached for a short time.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
+            Vary:
+              $ref: "#/components/headers/Vary"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Article not found
 
   /v1/scan/login_test:
     get:
@@ -640,6 +733,9 @@ paths:
       responses:
         "200":
           description: Scan created successfully
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
           content:
             application/json:
               schema:
@@ -675,6 +771,9 @@ paths:
       responses:
         "200":
           description: Recognition succeeded
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
           content:
             application/json:
               schema:
@@ -731,6 +830,9 @@ paths:
       responses:
         "200":
           description: Profile picture set successfully
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
           content:
             application/json:
               schema:
@@ -792,14 +894,32 @@ paths:
           schema:
             type: string
           description: Path to the image in storage
+        - in: header
+          name: If-None-Match
+          required: false
+          schema:
+            type: string
+          description: Optional cached image ETag. If it still matches, the server returns 304.
       responses:
         '200':
           description: Image file
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
+            ETag:
+              $ref: "#/components/headers/ETag"
           content:
             image/jpeg:
               schema:
                 type: string
                 format: binary
+        "304":
+          description: Cached image representation is still valid.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
+            ETag:
+              $ref: "#/components/headers/ETag"
 
   /v1/collections/me:
     get:
@@ -851,9 +971,22 @@ paths:
             type: integer
             minimum: 0
           description: Optional number of entries to skip.
+        - in: header
+          name: If-None-Match
+          required: false
+          schema:
+            type: string
+          description: Optional cached collection ETag. If it still matches, the server returns 304.
       responses:
         "200":
           description: User collection entries.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
+            ETag:
+              $ref: "#/components/headers/ETag"
+            Vary:
+              $ref: "#/components/headers/Vary"
           content:
             application/json:
               schema:
@@ -874,6 +1007,15 @@ paths:
                     type: string
         "401":
           description: Unauthorized.
+        "304":
+          description: Cached collection list representation is still valid.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
+            ETag:
+              $ref: "#/components/headers/ETag"
+            Vary:
+              $ref: "#/components/headers/Vary"
 
   /v1/collections/me/{entryId}:
     get:
@@ -887,15 +1029,37 @@ paths:
           schema:
             type: integer
             minimum: 1
+        - in: header
+          name: If-None-Match
+          required: false
+          schema:
+            type: string
+          description: Optional cached entry ETag. If it still matches, the server returns 304.
       responses:
         "200":
           description: Collection entry detail.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
+            ETag:
+              $ref: "#/components/headers/ETag"
+            Vary:
+              $ref: "#/components/headers/Vary"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/collectionEntryDetail"
         "401":
           description: Unauthorized.
+        "304":
+          description: Cached collection detail representation is still valid.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
+            ETag:
+              $ref: "#/components/headers/ETag"
+            Vary:
+              $ref: "#/components/headers/Vary"
         "404":
           description: Collection entry not found.
           content:
@@ -906,7 +1070,7 @@ paths:
                   error:
                     type: string
 
-  /api/collections/me/{entryId}/category:
+  /v1/collections/me/{entryId}/category:
     patch:
       summary: Update the category of one collection entry owned by the authenticated user
       tags:
@@ -918,6 +1082,12 @@ paths:
           schema:
             type: integer
             minimum: 1
+        - in: header
+          name: If-Match
+          required: false
+          schema:
+            type: string
+          description: Optional ETag from the current detail representation. If it is stale, the server returns 412.
       requestBody:
         required: true
         content:
@@ -943,6 +1113,9 @@ paths:
       responses:
         "200":
           description: Collection entry category updated.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
           content:
             application/json:
               schema:
@@ -967,6 +1140,11 @@ paths:
                 properties:
                   error:
                     type: string
+        "412":
+          description: If-Match precondition failed because the client used a stale ETag.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
 
   # Nia changes start!!
 
