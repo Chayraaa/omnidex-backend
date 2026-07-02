@@ -3,6 +3,7 @@ from flask import Blueprint, request, current_app, url_for
 
 from app import validate, login_required
 from app.domain_models.user import User
+from app.http_cache import add_no_store, json_no_store
 
 # This route handles user creation, modification, deletion, login, and logout
 users = Blueprint("users", __name__)
@@ -18,9 +19,9 @@ def create_user():
     password = data.get("password")
 
     if current_app.user_service.create_user(name, email, password):
-        return {"message": "User created successfully."}, 201
+        return json_no_store({"message": "User created successfully."}, 201)
     else:
-        return {"message": "User already exists."}, 400
+        return json_no_store({"message": "User already exists."}, 400)
 
 
 # Handles the login. It checks password and username, returns a jwt token which is subsequently checked in the
@@ -38,22 +39,22 @@ def login():
     else:
         res = current_app.auth_service.authenticate_local(email, password)
     if not res:
-        return {"message": "Invalid credentials."}, 401
+        return json_no_store({"message": "Invalid credentials."}, 401)
 
     token, refresh = res
 
-    return {
+    return json_no_store({
         "message": "Login successful. Use token for authentication.",
         "access_token": token,
         "refresh_token": refresh,
-    }, 200
+    }, 200)
 
 
 @users.route("/google/login", methods=["GET"])
 @validate
 def google_login():
     redirect_uri = url_for("users.google_callback", _external=True)
-    return current_app.google.authorize_redirect(redirect_uri)
+    return add_no_store(current_app.google.authorize_redirect(redirect_uri))
 
 
 @users.route("/google/callback", methods=["GET"])
@@ -62,27 +63,27 @@ def google_callback():
     try:
         token = current_app.google.authorize_access_token()
     except MismatchingStateError:
-        return {
+        return json_no_store({
             "error": "oauth_state_mismatch",
             "message": "Login session expired or invalid state. Please try again."
-        }, 400
+        }, 400)
 
     if not token:
-        return {"error": "Failed to authorize with Google"}, 400
+        return json_no_store({"error": "Failed to authorize with Google"}, 400)
 
     user_info = token.get("userinfo")
     if not user_info:
-        return {"error": "Failed to fetch user info from Google"}, 400
+        return json_no_store({"error": "Failed to fetch user info from Google"}, 400)
 
     jwt, refresh = current_app.google_oauth_service.authenticate_user(user_info)
     if not jwt:
-        return {"error": "Failed to authenticate user"}, 400
+        return json_no_store({"error": "Failed to authenticate user"}, 400)
 
-    return {
+    return json_no_store({
         "message": "Login successful. Use token for authentication.",
         "access_token": jwt,
         "refresh_token": refresh
-    }, 200
+    }, 200)
 
 
 @users.route("/set_profile_picture", methods=["POST"])
@@ -93,14 +94,14 @@ def set_profile_picture(user: User):
     image = data.get("image")
 
     current_app.image_service.save_image(user, image, True)
-    return {"message": "Profile picture set successfully."}, 200
+    return json_no_store({"message": "Profile picture set successfully."}, 200)
 
 
 @users.route("/get_profile_picture/<int:user_id>", methods=["GET"])
 @validate
 def get_profile_picture(user_id: int):
     url = current_app.image_service.get_user_image_url(User(id=user_id, name="", hashed_password=""))
-    return {"url": url}, 200
+    return json_no_store({"url": url}, 200)
 
 
 @users.route("/<int:user_id>", methods=["GET"])
@@ -109,13 +110,13 @@ def get_user(user_id: int):
     user = current_app.user_service.get_user(user_id)
 
     if not user:
-        return {"message": "User not found"}, 404
+        return json_no_store({"message": "User not found"}, 404)
 
-    return {
+    return json_no_store({
         "user": {
             "id": user.id,
             "name": user.name,
             "email": user.email,
             "friend_code": user.friend_code
         }
-    }, 200
+    }, 200)

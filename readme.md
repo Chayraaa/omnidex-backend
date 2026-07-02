@@ -296,3 +296,185 @@ Common issues:
 - If login works but `/api/scan` returns `502`, the request reached the backend and the issue is usually in the LISA response format or in LISA credentials.
 - If `/api/collections/me` shows no results, check that the inserted cards belong to the same user you logged in with.
 - If you use a different shell or OS, prefer the Python base64 command shown above instead of GNU-specific `base64 -w 0`.
+
+## Caching Smoke Tests (Docker)
+
+This section verifies the implemented HTTP caching behavior in a running backend.
+
+Current backend routes in this branch use the `/v1` prefix. If your deployment maps the API behind another prefix, adjust the URLs accordingly.
+
+### 1) Start backend
+
+```bash
+cd /home/prathamp/Restful/omnidex-backend
+docker compose up -d --build backend
+```
+
+### 2) Wiki public cache: `ETag` and `304`
+
+First request:
+
+```bash
+curl -sD /tmp/wiki.headers -o /tmp/wiki.body \
+  http://127.0.0.1:5000/v1/wiki/summary/cat
+
+cat /tmp/wiki.headers
+cat /tmp/wiki.body | jq
+```
+
+Expected headers:
+
+```text
+HTTP/1.1 200 OK
+Cache-Control: public, max-age=86400, must-revalidate
+ETag: "..."
+Vary: Accept
+```
+
+Revalidate with the returned `ETag`:
+
+```bash
+ETAG=$(awk -F': ' 'tolower($1)=="etag"{gsub("\r","",$2); print $2}' /tmp/wiki.headers)
+
+curl -i \
+  -H "If-None-Match: $ETAG" \
+  http://127.0.0.1:5000/v1/wiki/summary/cat
+```
+
+Expected response:
+
+```text
+HTTP/1.1 304 NOT MODIFIED
+Cache-Control: public, max-age=86400, must-revalidate
+ETag: "..."
+```
+
+### 3) No-store check for non-cacheable scan endpoint
+
+This does not need a valid token. The request may fail with `401`, but the response must still be marked as not cacheable.
+
+```bash
+curl -i -X POST http://127.0.0.1:5000/v1/scan \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+Expected header:
+
+```text
+Cache-Control: no-store
+```
+
+### 4) Collection private cache: `ETag`, `Vary: Authorization`, and `304`
+
+Create and log in a test user:
+
+```bash
+EMAIL="cache_tester_$(date +%s)@example.com"
+
+curl -s -X POST http://127.0.0.1:5000/v1/users/create \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"Cache Tester\",\"email\":\"$EMAIL\",\"password\":\"test12345\"}" | jq
+
+TOKEN=$(curl -s -X POST http://127.0.0.1:5000/v1/users/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"$EMAIL\",\"password\":\"test12345\"}" | jq -r .access_token)
+
+echo ${#TOKEN}
+```
+
+Call the collection endpoint:
+
+```bash
+curl -sD /tmp/collection.headers -o /tmp/collection.body \
+  http://127.0.0.1:5000/v1/collections/me \
+  -H "Authorization: Bearer $TOKEN"
+
+cat /tmp/collection.headers
+cat /tmp/collection.body | jq
+```
+
+Expected headers:
+
+```text
+HTTP/1.1 200 OK
+Cache-Control: private, no-cache
+ETag: "..."
+Vary: Authorization
+```
+
+Revalidate:
+
+```bash
+COLLECTION_ETAG=$(awk -F': ' 'tolower($1)=="etag"{gsub("\r","",$2); print $2}' /tmp/collection.headers)
+
+curl -i \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "If-None-Match: $COLLECTION_ETAG" \
+  http://127.0.0.1:5000/v1/collections/me
+```
+
+Expected response:
+
+```text
+HTTP/1.1 304 NOT MODIFIED
+Cache-Control: private, no-cache
+ETag: "..."
+Vary: Authorization
+```
+
+### 5) Optional image cache check
+
+Use an `image_reference` returned by a real scan response.
+
+```bash
+IMAGE_URL="<IMAGE_REFERENCE_FROM_SCAN_RESPONSE>"
+
+curl -sD /tmp/image.headers -o /tmp/image.body "$IMAGE_URL"
+cat /tmp/image.headers
+```
+
+Expected headers:
+
+```text
+HTTP/1.1 200 OK
+Cache-Control: private, max-age=86400, must-revalidate
+ETag: "..."
+```
+
+Revalidate:
+
+```bash
+IMAGE_ETAG=$(awk -F': ' 'tolower($1)=="etag"{gsub("\r","",$2); print $2}' /tmp/image.headers)
+
+curl -i \
+  -H "If-None-Match: $IMAGE_ETAG" \
+  "$IMAGE_URL"
+```
+
+Expected response:
+
+```text
+HTTP/1.1 304 NOT MODIFIED
+```
+
+### 6) Optional `If-Match` conflict check for category update
+
+This requires an existing collection entry id. Use any `id` from `GET /v1/collections/me`.
+
+```bash
+ENTRY_ID="<ENTRY_ID_FROM_COLLECTION_RESPONSE>"
+
+curl -i -X PATCH "http://127.0.0.1:5000/v1/collections/me/$ENTRY_ID/category" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H 'If-Match: "stale-etag"' \
+  -d '{"category":"Pflanze"}'
+```
+
+Expected response:
+
+```text
+HTTP/1.1 412 PRECONDITION FAILED
+Cache-Control: no-store
+```
