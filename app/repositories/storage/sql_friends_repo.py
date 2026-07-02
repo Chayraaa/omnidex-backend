@@ -57,20 +57,41 @@ class SqlFriendsRepo:
             status=db_obj.status
         )
 
-    def get_friendships(self, user_id: int) -> list[Friends]:
-        rows = FriendsModel.query.filter(
-            (FriendsModel.user_id == user_id) |
-            (FriendsModel.friend_id == user_id)
-        ).all()
-
-        return [
-            Friends(
-                user_id=r.user_id,
-                friend_id=r.friend_id,
-                status=r.status
+    def get_friendships(self, user_id: int) -> list[dict]:
+        rows = (
+            db.session.query(FriendsModel, UserModel)
+            .join(
+                UserModel,
+                (
+                    ((FriendsModel.user_id == user_id) & (UserModel.id == FriendsModel.friend_id))
+                    |
+                    ((FriendsModel.friend_id == user_id) & (UserModel.id == FriendsModel.user_id))
+                )
             )
-            for r in rows
-        ]
+            .filter(
+                (FriendsModel.user_id == user_id) |
+                (FriendsModel.friend_id == user_id)
+            )
+            .all()
+        )
+
+        result = []
+
+        for friendship, other_user in rows:
+            if friendship.user_id == user_id:
+                other_user_id = friendship.friend_id
+            else:
+                other_user_id = friendship.user_id
+
+            result.append({
+                "friend_id": other_user_id,
+                "name": other_user.name,
+                "profile_picture_key": other_user.profile_picture_key,
+                "status": friendship.status,
+            })
+
+        return result
+    
 
     def delete_friendship(self, user_id: int, friend_id: int) -> bool:
         db_obj = db.session.query(FriendsModel).filter(
@@ -116,3 +137,23 @@ class SqlFriendsRepo:
 
         db.session.commit()
         return deleted_count
+    
+    def get_friend_ids(self, user_id: int) -> list[int]:
+        rows = (
+            db.session.query(FriendsModel)
+            .filter(
+                ((FriendsModel.user_id == user_id) | (FriendsModel.friend_id == user_id)),
+                FriendsModel.status == "accepted"
+            )
+            .all()
+        )
+
+        friend_ids = []
+
+        for r in rows:
+            if r.user_id == user_id:
+                friend_ids.append(r.friend_id)
+            else:
+                friend_ids.append(r.user_id)
+
+        return friend_ids

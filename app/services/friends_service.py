@@ -1,6 +1,7 @@
 from app.domain_models.user import User
 from app.repositories.interfaces.storage.friends_repo_protocol import FriendsRepoProtocol
 from app.repositories.interfaces.storage.user_repo_protocol import UserRepoProtocol
+from app.repositories.interfaces.storage.card_repo_protocol import CardRepoProtocol
 from enum import Enum
 
 
@@ -11,10 +12,10 @@ class FriendshipStatus(str, Enum):
 
 
 class FriendsService:
-    def __init__(self, friends_repo: FriendsRepoProtocol, user_repo: UserRepoProtocol, notification_service=None):
+    def __init__(self, friends_repo: FriendsRepoProtocol, user_repo: UserRepoProtocol, card_repo: CardRepoProtocol):
         self.friends_repo = friends_repo
         self.user_repo = user_repo
-        self.notification_service = notification_service
+        self.card_repo = card_repo
 
     # SEND FRIEND REQUEST
     def create_friend_request(self, sender: User, friend_code: str) -> bool:
@@ -33,13 +34,6 @@ class FriendsService:
             friend=receiver,
             status=FriendshipStatus.PENDING.value
         )
-
-        if self.notification_service:
-            self.notification_service.send(
-                user_id=receiver.id,
-                type="friend_request",
-                message=f"{sender.name} sent you a friend request"
-            )
 
         return True
     
@@ -77,17 +71,16 @@ class FriendsService:
         result = []
 
         for f in friendships:
-            if f.status != FriendshipStatus.ACCEPTED.value:
+            if f["status"] != FriendshipStatus.ACCEPTED.value:
                 continue
 
-            other_user_id = (
-                f.friend_id if f.user_id == user.id else f.user_id
-            )
-
             result.append({
-                "friend_id": other_user_id,
-                "status": f.status
+                "friend_id": f["friend_id"],
+                "name": f["name"],
+                "profile_picture_key": f["profile_picture_key"],
+                "status": f["status"]
             })
+
 
         return result
     
@@ -97,11 +90,33 @@ class FriendsService:
 
         return [
             {
-                "sender_id": f.user_id,
-                "status": f.status
+                "sender_id": f["friend_id"],
+                "name": f["name"],
+                "profile_picture_key": f["profile_picture_key"],
+                "status": f["status"]
             }
             for f in friendships
-            if f.friend_id == user.id and f.status == FriendshipStatus.PENDING.value
+            if f["status"] == FriendshipStatus.PENDING.value
+        ]
+    
+    def get_friends_feed(self, user: User):
+        friend_ids = self.friends_repo.get_friend_ids(user.id)
+
+        if not friend_ids:
+            return []
+
+        cards = self.card_repo.get_cards_by_friends(friend_ids)
+
+        return [
+            {
+                "card_id": c.id,
+                "user_id": c.user_id,
+                "name": c.name,
+                "image_key": c.image_key,
+                "card_summary": c.card_summary,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+            }
+            for c in cards
         ]
     
 

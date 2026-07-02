@@ -56,4 +56,4 @@ class GoogleOauthService:
             hashed_token=refresh_token_hash,
         )
 
-        return access_token, refresh_token
+        return access_token, refresh_token, user.id

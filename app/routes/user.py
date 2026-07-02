@@ -44,13 +44,9 @@ def login():
 
     return {
         "message": "Login successful. Use token for authentication.",
+        "user_id": user.id,
         "access_token": token,
-        "refresh_token": refresh,
-        "user": {
-            "id": user.id,          
-            "name": user.name,
-            "email": user.email
-        }
+        "refresh_token": refresh
     }, 200
 
 
@@ -79,12 +75,13 @@ def google_callback():
     if not user_info:
         return {"error": "Failed to fetch user info from Google"}, 400
 
-    jwt, refresh = current_app.google_oauth_service.authenticate_user(user_info)
+    jwt, refresh, user_id = current_app.google_oauth_service.authenticate_user(user_info)
     if not jwt:
         return {"error": "Failed to authenticate user"}, 400
 
     return {
         "message": "Login successful. Use token for authentication.",
+        "user_id": user_id,
         "access_token": jwt,
         "refresh_token": refresh
     }, 200
@@ -120,8 +117,10 @@ def get_user(userId: int):
         "user": {
             "id": user.id,
             "name": user.name,
+            "profile_picture_key": user.profile_picture_key,
             "email": user.email,
             "friend_code": user.friend_code
         }
     }, 200
+
 

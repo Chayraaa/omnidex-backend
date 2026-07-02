@@ -30,8 +30,6 @@ from app.services.friends_service import FriendsService
 from app.repositories.external.lisa_category_api_client import LisaCategoryApiClient
 from app.extensions import db
 from openapi_core import OpenAPI
-from app.services.notification_service import NotificationService
-from app.repositories.storage.sql_notification_repo import SqlNotificationRepo
 
 # Add all the db database_models here
 from app.database_models.user_model import UserModel
@@ -146,6 +144,11 @@ def setup_services(app: Flask):
     )
     app.google_oauth_service = GoogleOauthService(storage_unit_of_work.user_repo,
                                                   storage_unit_of_work.refresh_token_repo)
+    app.friends_service = FriendsService(
+        storage_unit_of_work.friends_repo,
+        storage_unit_of_work.user_repo,
+        storage_unit_of_work.card_repo
+    )
 
 
 # Add all the routes here (see health as example)
@@ -166,8 +169,6 @@ def setup_routes(app: Flask):
     app.register_blueprint(achievements, url_prefix="/v1/achievements")
     from .routes.friends import friends
     app.register_blueprint(friends, url_prefix="/v1/friends")
-    from .routes.notifications import notifications
-    app.register_blueprint(notifications, url_prefix="/v1/notifications")
 
 
 ########################

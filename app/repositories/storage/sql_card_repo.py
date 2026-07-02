@@ -42,3 +42,11 @@ class SqlCardRepo(CardRepoProtocol):
             .first()
             is not None
         )
+    
+    def get_cards_by_friends(self, user_ids: list[int]):
+        return (
+            db.session.query(CardModel)
+            .filter(CardModel.user_id.in_(user_ids))
+            .order_by(CardModel.created_at.desc())
+            .all()
+        )

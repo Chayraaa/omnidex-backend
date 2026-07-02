@@ -3,6 +3,8 @@ from app.services.friends_service import FriendsService
 from app.domain_models.user import User
 from app.repositories.storage.sql_friends_repo import SqlFriendsRepo
 from app.repositories.storage.sql_user_repo import SqlUserRepo
+from app.repositories.storage.sql_card_repo import SqlCardRepo
+
 from app.__init__ import login_required
 from flask import g
 
@@ -14,11 +16,12 @@ friends = Blueprint("friends", __name__)
 def get_friends_service():
     friends_repo = SqlFriendsRepo()
     user_repo = SqlUserRepo()
+    card_repo = SqlCardRepo()
 
     return FriendsService(
         friends_repo,
         user_repo,
-        current_app.notification_service
+        card_repo
     )
 
 
@@ -72,13 +75,7 @@ def get_incoming_requests(user: User):
 
     return jsonify({
         "success": True,
-        "requests": [
-            {
-                "sender_id": r["sender_id"],
-                "status": r["status"]
-            }
-            for r in requests
-        ]
+        "requests": requests
     })
 
 
@@ -109,8 +106,22 @@ def get_friends(user:User):
         "friends": [
             {
                 "friend_id": f["friend_id"],
+                "name": f["name"],
+                "profile_picture_key": f["profile_picture_key"],
                 "status": f["status"]
             }
             for f in friends
         ]
+    })
+
+@friends.route("/feed", methods=["GET"])
+@login_required
+def get_friends_feed(user: User):
+    service = get_friends_service()
+
+    feed = service.get_friends_feed(user)
+
+    return jsonify({
+        "success": True,
+        "feed": feed
     })
