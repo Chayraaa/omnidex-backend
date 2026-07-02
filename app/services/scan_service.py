@@ -31,6 +31,7 @@ class ScanService:
         card_repo,
         base_url: str,
         category_service=None,
+        achievement_service=None,
     ):
         self.recognition_service = recognition_service
         self.wiki_service = wiki_service
@@ -39,6 +40,7 @@ class ScanService:
         self.card_repo = card_repo
         self.base_url = base_url.rstrip("/")
         self.category_service = category_service or CategoryService()
+        self.achievement_service = achievement_service
 
     def create_scan(self, user_id: int, image_input: bytes) -> ScanResultDto:
         if user_id <= 0:
@@ -64,12 +66,14 @@ class ScanService:
             description=description,
             source_title=recognition_result.label if knowledge_enriched else None,
             source_url=self._build_wikipedia_url(recognition_result.label) if knowledge_enriched else None,
-            category=category_assignment.category,
+            category=category_assignment.category.lower(),
             alternatives=[
                 {"label": alternative.label, "confidence": alternative.confidence}
                 for alternative in recognition_result.alternatives
             ],
         )
+
+        self.achievement_service.process_card_created(user_id)
 
         return ScanResultDto(
             label=recognition_result.label,
