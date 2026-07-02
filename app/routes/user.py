@@ -1,5 +1,5 @@
 from authlib.integrations.base_client import MismatchingStateError
-from flask import Blueprint, request, current_app, url_for
+from flask import Blueprint, request, current_app, url_for, redirect
 
 from app import validate, login_required
 from app.domain_models.user import User
@@ -45,7 +45,7 @@ def login():
 
     return json_no_store({
         "message": "Login successful. Use token for authentication.",
-        "user_id": user.id,
+        "user_id": user.id if isinstance(user, User) else user,
         "access_token": token,
         "refresh_token": refresh,
     }, 200)
@@ -80,12 +80,12 @@ def google_callback():
     if not jwt:
         return json_no_store({"error": "Failed to authenticate user"}, 400)
 
-    return json_no_store({
-        "message": "Login successful. Use token for authentication.",
-        "user_id": user_id,
-        "access_token": jwt,
-        "refresh_token": refresh
-    }, 200)
+    return redirect(
+    f"omnidexfrontend://auth/google/callback"
+    f"?accessToken={jwt}"
+    f"&refreshToken={refresh}"
+    f"&user_id={user_id}"
+)
 
 
 @users.route("/set_profile_picture", methods=["POST"])
