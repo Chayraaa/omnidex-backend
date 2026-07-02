@@ -4,7 +4,7 @@ from functools import wraps
 
 import yaml
 from authlib.integrations.flask_client import OAuth
-from flask import Flask, request, jsonify, current_app
+from flask import Flask, request, current_app
 from openapi_core.contrib.flask import FlaskOpenAPIRequest
 from openapi_core.exceptions import OpenAPIError
 from openapi_core.validation.request.exceptions import InvalidRequestBody
@@ -30,6 +30,7 @@ from app.services.friends_service import FriendsService
 from app.repositories.external.lisa_category_api_client import LisaCategoryApiClient
 from app.extensions import db
 from openapi_core import OpenAPI
+from app.http_cache import json_no_store
 
 # Add all the db database_models here
 from app.database_models.user_model import UserModel
@@ -181,25 +182,24 @@ def login_required(f):
 
         # Get the token from the Authorization header
         token = request.headers.get("Authorization")
-        print(request.headers)
         if not token:
-            return jsonify({"error": "Token missing"}), 401
+            return json_no_store({"error": "Token missing"}, 401)
 
         # Check if the token is in the correct format
         parts = token.split()
         if len(parts) != 2 or parts[0].lower() != "bearer":
-            return jsonify({"error": "Invalid Authorization header"}), 401
+            return json_no_store({"error": "Invalid Authorization header"}, 401)
 
         # Parsing and verification of the token
         token = parts[1]
         user_id = PasswordService.verify_token(token)
         if not user_id:
-            return jsonify({"error": "Invalid or expired token"}), 401
+            return json_no_store({"error": "Invalid or expired token"}, 401)
 
         # Query the user from the database
         user = current_app.user_service.get_user(user_id)
         if not user:
-            return jsonify({"error": "User not found"}), 401
+            return json_no_store({"error": "User not found"}, 401)
 
         # Return the user object to the route handler
         return f(user=user, *args, **kwargs)
@@ -222,15 +222,15 @@ def validate(f):
                 errors = [err.message for err in e.__cause__.schema_errors]
             else:
                 errors = [str(e.__cause__)]
-            return jsonify({
+            return json_no_store({
                 "error": "Request body validation failed",
                 "fields": errors
-            }), 400
+            }, 400)
         except OpenAPIError as e:
-            return jsonify({
+            return json_no_store({
                 "error": "Request validation failed",
                 "details": str(e)
-            }), 400
+            }, 400)
 
         return f(*args, **kwargs)
 
