@@ -66,6 +66,20 @@ class CollectionService:
             )
             for card in cards
         ]
+    
+    def delete_collection_entry(self, user_id: int, entry_id: int) -> None:
+        self._validate_user(user_id)
+
+        if entry_id <= 0:
+            raise CollectionEntryNotFound()
+
+        deleted = self.collection_repo.delete_for_user(
+            user_id=user_id,
+            entry_id=entry_id,
+        )
+
+        if not deleted:
+            raise CollectionEntryNotFound()
 
     def get_collection_entry_detail(self, user_id: int, entry_id: int) -> CollectionEntryDetailDto:
         self._validate_user(user_id)

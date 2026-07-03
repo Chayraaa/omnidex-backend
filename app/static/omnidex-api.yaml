@@ -677,7 +677,7 @@ paths:
                     type: string
                     example: Article not found
 
-  /v1/scan:
+  /v1/scans:
     post:
       summary: Create scan result from image
       description: Recognizes the uploaded image and enriches it with Wikipedia information.
@@ -795,7 +795,7 @@ paths:
         "404":
           description: User or profile picture not found
 
-  /v1/image/{key}:
+  /v1/images/{key}:
     get:
       summary: Get image by key
        
