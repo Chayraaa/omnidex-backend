@@ -31,8 +31,9 @@ class SummaryServiceTests(unittest.TestCase):
         result = service.summarize_object_info("cat", "Cats are mammals.")
 
         self.assertEqual(result, "Sentence one. Sentence two.")
-        self.assertIn("about 'cat'", adapter.last_prompt)
-        self.assertIn("maximum two short sentences", adapter.last_prompt)
+        self.assertIn("über 'cat'", adapter.last_prompt)
+        self.assertIn("auf Deutsch", adapter.last_prompt)
+        self.assertIn("maximal zwei kurze Sätze", adapter.last_prompt)
 
     def test_empty_summary_raises_invalid_summary_response(self):
         adapter = _FakeSummaryAdapter(response="   ")

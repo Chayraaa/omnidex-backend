@@ -4,9 +4,10 @@ The Omnidex is an app that allows users to capture images and keep them
 as cards in a collection. The images will be classified into a name and other
 attributes like type etc.
 
-Based on the name, the wikipedia API will be used to get a description of the
-primary item in the image. The combination of image, description and the other attributes
-will be used to create the finished card.
+Based on the recognized object name, the Wikipedia API is used to get a description of the
+primary item in the image. The internal enrichment flow keeps using the recognized English
+label for Wikipedia and category assignment, while the saved card title and short card summary
+are generated in German for the frontend.
 
 # Features
 - Collection of objects as cards
@@ -46,7 +47,7 @@ See [AI Usage](ai-usage-protocol.md)
 
 ## Scan Endpoint Quickstart (Docker)
 
-This section shows how to run the backend and call `POST /api/scan` end-to-end (LISA recognition + Wikipedia enrichment + summary + DB persistence).
+This section shows how to run the backend and call `POST /api/scan` end-to-end (LISA recognition + Wikipedia enrichment + German card summary + German card label + DB persistence).
 
 ### 1) Configure environment
 
@@ -59,8 +60,10 @@ LISA_BASE_URL=https://chat-1.ki-awz.iisys.de
 LISA_API_KEY=<PASTE_REAL_LISA_TOKEN_HERE>
 LISA_MODEL=lisa-vision
 LISA_SUMMARY_MODEL=lisa-vision
+LISA_LABEL_TRANSLATION_MODEL=lisa-vision
 LISA_TIMEOUT_SECONDS=60
 LISA_SUMMARY_TIMEOUT_SECONDS=60
+LISA_LABEL_TRANSLATION_TIMEOUT_SECONDS=60
 GUNICORN_CMD_ARGS=--timeout 180
 EOF
 ```
@@ -126,9 +129,9 @@ curl -s -X POST http://127.0.0.1:5000/api/scan \
 
 Expected response fields include:
 - `id`
-- `label`
-- `description`
-- `card_summary`
+- `label` (German display label, e.g. `Katze`; falls back to the original recognized label if translation fails)
+- `description` (Wikipedia description; can remain English)
+- `card_summary` (German short summary, max two sentences)
 - `summary_generated_by_ai`
 - `image_reference`
 
@@ -137,6 +140,8 @@ Expected response fields include:
 ```bash
 docker compose exec db psql -U postgres -d omnidex -c "select id,name,card_summary,image_key,user_id from cards order by id desc limit 5;"
 ```
+
+Expected: `name` contains the German display label and `card_summary` contains the German short card text.
 
 ### 8) Verify image URL works
 
@@ -155,7 +160,7 @@ This section shows how to test collection endpoints for the authenticated user:
 - `GET /api/collections/me`
 - `GET /api/collections/me/{entryId}`
 
-It includes list/search/sort/category-filter behavior.
+It includes list/search/sort/category-filter behavior. Collection labels come from the saved card name, so scanned objects should appear with the German display label.
 
 ### 1) Start backend
 
@@ -214,9 +219,9 @@ docker compose exec -T db psql -U postgres -d omnidex -c "
 insert into cards
 (name, card_summary, category, confidence, description, source_title, source_url, alternatives_json, image_key, created_at, user_id)
 values
-('rose', 'Rose short summary', 'Pflanze', 0.93, 'Rose description', 'Rose', 'https://en.wikipedia.org/wiki/Rose', '[]', 'http://127.0.0.1:5000/api/image/cards/' || '$USER_ID' || '/rose.jpeg', now() - interval '3 day', '$USER_ID'),
-('cat', 'Cat short summary', 'Tiere', 0.97, 'Cat description', 'Cat', 'https://en.wikipedia.org/wiki/Cat', '[{\"label\":\"lynx\",\"confidence\":0.31}]', 'http://127.0.0.1:5000/api/image/cards/' || '$USER_ID' || '/cat.jpeg', now() - interval '2 day', '$USER_ID'),
-('pizza', 'Pizza short summary', 'Nahrung', 0.95, 'Pizza description', 'Pizza', 'https://en.wikipedia.org/wiki/Pizza', '[]', 'http://127.0.0.1:5000/api/image/cards/' || '$USER_ID' || '/pizza.jpeg', now() - interval '1 day', '$USER_ID');
+('Rose', 'Kurze Zusammenfassung zur Rose', 'Pflanze', 0.93, 'Rose description', 'Rose', 'https://en.wikipedia.org/wiki/Rose', '[]', 'http://127.0.0.1:5000/api/image/cards/' || '$USER_ID' || '/rose.jpeg', now() - interval '3 day', '$USER_ID'),
+('Katze', 'Kurze Zusammenfassung zur Katze', 'Tiere', 0.97, 'Cat description', 'Cat', 'https://en.wikipedia.org/wiki/Cat', '[{\"label\":\"lynx\",\"confidence\":0.31}]', 'http://127.0.0.1:5000/api/image/cards/' || '$USER_ID' || '/cat.jpeg', now() - interval '2 day', '$USER_ID'),
+('Pizza', 'Kurze Zusammenfassung zur Pizza', 'Nahrung', 0.95, 'Pizza description', 'Pizza', 'https://en.wikipedia.org/wiki/Pizza', '[]', 'http://127.0.0.1:5000/api/image/cards/' || '$USER_ID' || '/pizza.jpeg', now() - interval '1 day', '$USER_ID');
 "
 ```
 
@@ -241,7 +246,7 @@ curl -s "http://127.0.0.1:5000/api/collections/me?sort=oldest" \
 Search:
 
 ```bash
-curl -s "http://127.0.0.1:5000/api/collections/me?query=cat" \
+curl -s "http://127.0.0.1:5000/api/collections/me?query=Katze" \
   -H "Authorization: Bearer $TOKEN" | jq
 ```
 
@@ -294,5 +299,6 @@ Common issues:
 
 - If a route returns `404` after code changes, rebuild the backend container with `docker compose up -d --build backend`.
 - If login works but `/api/scan` returns `502`, the request reached the backend and the issue is usually in the LISA response format or in LISA credentials.
+- If scan works but `label` or `card_summary` is not German, check that the backend container was rebuilt and that `LISA_API_KEY`, `LISA_SUMMARY_MODEL` and `LISA_LABEL_TRANSLATION_MODEL` are available in the container.
 - If `/api/collections/me` shows no results, check that the inserted cards belong to the same user you logged in with.
 - If you use a different shell or OS, prefer the Python base64 command shown above instead of GNU-specific `base64 -w 0`.

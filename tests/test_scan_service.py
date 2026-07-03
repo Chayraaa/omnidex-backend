@@ -130,6 +130,19 @@ class _FakeCategoryService:
         return self.result
 
 
+class _FakeLabelTranslationService:
+    def __init__(self, translated_label: str | None = None, error: Exception | None = None):
+        self.translated_label = translated_label
+        self.error = error
+        self.called_with = None
+
+    def translate_label_to_german(self, label: str) -> str:
+        self.called_with = label
+        if self.error is not None:
+            raise self.error
+        return self.translated_label
+
+
 class ScanServiceTests(unittest.TestCase):
     def test_successful_scan_orchestration(self):
         recognition = RecognitionResult(
@@ -145,6 +158,7 @@ class ScanServiceTests(unittest.TestCase):
         category_service = _FakeCategoryService(
             CategoryAssignmentResult(category="Tiere", confidence=0.91, scores={"Tiere": 0.91}, generated_by_ai=True)
         )
+        label_translation_service = _FakeLabelTranslationService(translated_label="Katze")
         service = ScanService(
             recognition_service,
             wiki_service,
@@ -153,6 +167,7 @@ class ScanServiceTests(unittest.TestCase):
             _FakeCardRepo(),
             base_url="http://127.0.0.1:5000",
             category_service=category_service,
+            label_translation_service=label_translation_service,
         )
 
         result = service.create_scan(42, b"image-bytes")
@@ -160,7 +175,9 @@ class ScanServiceTests(unittest.TestCase):
 
         self.assertEqual(recognition_service.called_with, b"image-bytes")
         self.assertEqual(wiki_service.called_with, "cat")
-        self.assertEqual(payload["label"], "cat")
+        self.assertEqual(summary_service.called_with[0], "cat")
+        self.assertEqual(label_translation_service.called_with, "cat")
+        self.assertEqual(payload["label"], "Katze")
         self.assertEqual(payload["confidence"], 0.97)
         self.assertEqual(payload["category_hint"], "ANIMAL")
         self.assertEqual(payload["category"], "Tiere")
@@ -172,10 +189,34 @@ class ScanServiceTests(unittest.TestCase):
         self.assertEqual(len(service.card_repo.created), 1)
         self.assertTrue(service.card_repo.created[0]["image_key"].startswith("cards/42/"))
         self.assertFalse(service.card_repo.created[0]["image_key"].startswith("http://127.0.0.1:5000"))
+        self.assertEqual(service.card_repo.created[0]["name"], "Katze")
         self.assertEqual(service.card_repo.created[0]["category"], "Tiere")
         self.assertEqual(category_service.called_with["label"], "cat")
         self.assertEqual(category_service.called_with["category_hint"], "ANIMAL")
         self.assertNotIn("provider_raw", payload)
+
+    def test_label_translation_failure_falls_back_to_recognition_label(self):
+        recognition = RecognitionResult(
+            label="cat",
+            confidence=0.97,
+            alternatives=[],
+            category_hint="ANIMAL",
+            provider_raw={"provider": "lisa"},
+        )
+        service = ScanService(
+            _FakeRecognitionService(result=recognition),
+            _FakeWikiService(summary="The cat is a domestic species of small carnivorous mammal."),
+            _FakeSummaryService(summary="Eine Katze ist ein kleines domestiziertes Raubtier."),
+            _FakeImageStorage(),
+            _FakeCardRepo(),
+            base_url="http://127.0.0.1:5000",
+            label_translation_service=_FakeLabelTranslationService(error=RuntimeError("translation failed")),
+        )
+
+        payload = service.create_scan(42, b"image-bytes").to_dict()
+
+        self.assertEqual(payload["label"], "cat")
+        self.assertEqual(service.card_repo.created[0]["name"], "cat")
 
     def test_low_confidence_is_exposed_as_scan_recognition_failed(self):
         recognition_service = _FakeRecognitionService(
