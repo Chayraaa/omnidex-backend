@@ -9,15 +9,7 @@ from app.http_cache import json_no_store
 from app.services.recognition_errors import RecognitionUnavailable, LowConfidence, InvalidRecognitionResponse
 from app.services.scan_errors import ScanInputInvalid, ScanRecognitionFailed, ScanCreationFailed
 
-scan = Blueprint("scan", __name__)
-
-
-# user_id is required when having @login_required decorator. Has the user object
-@scan.route("/login_test", methods=["GET"])
-@login_required
-@validate
-def scan_route(user: User):
-    return json_no_store({"message": f"Hello, {user.name}!"}, 200)
+scan = Blueprint("scans", __name__)
 
 
 @scan.route("", methods=["POST"])
@@ -50,44 +42,6 @@ def create_scan_route(user: User):
 
     return json_no_store(scan_result.to_dict(), 200)
 
-
-@scan.route("/recognize", methods=["POST"])
-@login_required
-@validate
-def recognize_route(user: User):
-    data = request.get_json() or {}
-    image_value = data.get("image")
-    if not isinstance(image_value, str) or not image_value.strip():
-        return json_no_store({"error": "Image field is required and must be a base64 string."}, 400)
-
-    try:
-        image_data = _parse_base64_image(image_value)
-    except ValueError as exc:
-        return json_no_store({"error": "Invalid base64 image payload.", "details": str(exc)}, 400)
-
-    try:
-        recognition = current_app.recognition_service.recognize_image(image_data)
-    except LowConfidence as exc:
-        return json_no_store({
-            "error": "Low confidence recognition result.",
-            "label": exc.label,
-            "confidence": exc.confidence,
-            "minimum_confidence": exc.minimum_confidence,
-        }, 422)
-    except RecognitionUnavailable as exc:
-        return json_no_store({"error": "Recognition service unavailable.", "details": str(exc)}, 503)
-    except InvalidRecognitionResponse as exc:
-        return json_no_store({"error": "Invalid recognition response.", "details": str(exc)}, 502)
-
-    return json_no_store({
-        "label": recognition.label,
-        "confidence": recognition.confidence,
-        "alternatives": [
-            {"label": alt.label, "confidence": alt.confidence}
-            for alt in recognition.alternatives
-        ],
-        "category_hint": recognition.category_hint,
-    }, 200)
 
 
 def _parse_base64_image(image_value: str) -> bytes:

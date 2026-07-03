@@ -63,3 +63,20 @@ class SqlCollectionRepo(CollectionRepoProtocol):
         print(category)
         db.session.commit()
         return card
+    
+    def delete_for_user(self, *, user_id: int, entry_id: int) -> bool:
+        card = (
+            CardModel.query.filter(
+                CardModel.user_id == user_id,
+                CardModel.id == entry_id,
+            )
+            .limit(1)
+            .one_or_none()
+        )
+
+        if card is None:
+            return False
+
+        db.session.delete(card)
+        db.session.commit()
+        return True

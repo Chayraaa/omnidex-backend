@@ -26,56 +26,67 @@ def get_friends_service():
 
 
 # SEND FRIEND REQUEST
-@friends.route("/requests/send/<friend_code>", methods=["POST"])
+@friends.route("/requests/<friend_code>", methods=["POST"])
 @login_required
-def send_friend_request(user, friend_code):
+def send_friend_request(user: User, friend_code):
     service = get_friends_service()
-    result = service.create_friend_request(user, friend_code)
+    
+    if not service.create_friend_request(user, friend_code):
+        return jsonify({
+            "success": False,
+            "error": "Invalid friend code or request already exists"
+        }), 400
 
-    if not result:
-        return jsonify({"success": False, "message": "Could not send request"}), 400
+    return jsonify({
+        "success": True,
+        "message": "Friend request sent successfully"
+    }), 201
 
-    return jsonify({"success": True}), 201
 
 
-
-# ACCEPT FRIEND REQUEST
-@friends.route("/requests/accept/<int:sender_id>", methods=["POST"])
+@friends.route("/requests/<int:sender_id>", methods=["PATCH"])
 @login_required
-def accept_friend_request(user: User, sender_id):
-    service = get_friends_service()
-
-    result = service.accept_friend_request(user, sender_id)
-
-    if not result:
-        return jsonify({"success": False, "message": "Could not accept request"}), 400
-
-    return jsonify({"success": True})
-
-
-# DECLINE FRIEND REQUEST
-@friends.route("/requests/decline/<int:sender_id>", methods=["POST"])
-@login_required
-def decline_friend_request(user: User,sender_id):
+def update_friend_request(user: User, sender_id):
     service = get_friends_service()
 
-    result = service.decline_friend_request(user, sender_id)
+    status = request.get_json()
 
-    if not result:
-        return jsonify({"success": False, "message": "Could not decline request"}), 400
+    if status == "ACCEPTED":
+        success = service.accept_friend_request(user, sender_id)
+        success_message = "Friend request accepted"
+        error_message = "Request already handled or does not exist"
 
-    return jsonify({"success": True})
+    elif status == "DECLINED":
+        success = service.decline_friend_request(user, sender_id)
+        success_message = "Friend request declined"
+        error_message = "Request already handled or does not exist"
+
+    else:
+        return jsonify({
+            "success": False,
+            "error": "Status must be ACCEPTED or DECLINED"
+        }), 400
+
+    if not success:
+        return jsonify({
+            "success": False,
+            "error": error_message
+        }), 400
+
+    return jsonify({
+        "success": True,
+        "message": success_message
+    }), 200
+
 
 @friends.route("/requests", methods=["GET"])
 @login_required
 def get_incoming_requests(user: User):
     service = get_friends_service()
 
-    requests = service.get_incoming_requests(user)
-
     return jsonify({
         "success": True,
-        "requests": requests
+        "requests": service.get_incoming_requests(user)
     })
 
 
@@ -85,32 +96,36 @@ def get_incoming_requests(user: User):
 def remove_friend(user: User, user_id):
     service = get_friends_service()
 
-    result = service.remove_friend(user, user_id)
+    if not service.remove_friend(user, user_id):
+        return jsonify({
+            "success": False,
+            "error": "User is not in friend list"
+        }), 400
 
-    if not result:
-        return jsonify({"success": False, "message": "Could not remove friend"}), 400
-
-    return jsonify({"success": True})
+    return jsonify({
+        "success": True,
+        "message": "Friend removed successfully"
+    })
 
 
 # GET FRIEND LIST
-@friends.route("/", methods=["GET"])
+@friends.route("", methods=["GET"])
 @login_required
-def get_friends(user:User):
+def get_friends(user: User):
     service = get_friends_service()
 
-    friends = service.get_friends(user)
+    friends_list = service.get_friends(user)
 
     return jsonify({
         "success": True,
         "friends": [
             {
-                "friend_id": f["friend_id"],
+                "friendId": f["friend_id"],
                 "name": f["name"],
-                "profile_picture_key": f["profile_picture_key"],
+                "pictureUrl": f["profile_picture_key"],
                 "status": f["status"]
             }
-            for f in friends
+            for f in friends_list
         ]
     })
 
@@ -119,9 +134,7 @@ def get_friends(user:User):
 def get_friends_feed(user: User):
     service = get_friends_service()
 
-    feed = service.get_friends_feed(user)
-
     return jsonify({
         "success": True,
-        "feed": feed
+        "feed": service.get_friends_feed(user)
     })
