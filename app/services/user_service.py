@@ -14,9 +14,10 @@ from app.services.password_service import PasswordService
 # Services are use-case-specific. So they handle a single use-case. In this case, user management.
 # For cards, you would have a service that manages cards but also registers them to the user e.g.
 class UserService:
-    def __init__(self, repo: UserRepoProtocol, friend_repo: FriendsRepoProtocol):
+    def __init__(self, repo: UserRepoProtocol, friend_repo: FriendsRepoProtocol, achievement_service=None):
         self.repo = repo
         self.friend_repo = friend_repo
+        self.achievement_service = achievement_service
 
     def get_user(self, user_id: int) -> User | None:
         return self.repo.get_user(user_id)
@@ -29,8 +30,12 @@ class UserService:
             return False
         hashed_password = PasswordService.hash_password(password)
         friend_code = self.generate_friend_code()
-        return self.repo.create_user(name=name, password=hashed_password, email=email, friend_code=friend_code
-                                     )
+        success = self.repo.create_user(name=name, password=hashed_password, email=email, friend_code=friend_code)
+        if not success:
+            return False
+        user = self.repo.get_user_by_email(email)
+        self.achievement_service.ensure_user_achievements(user)
+        return True
 
     def update_user(self, user: User) -> bool:
         return self.repo.update_user(user)

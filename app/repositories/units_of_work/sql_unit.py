@@ -5,6 +5,9 @@ from app.repositories.interfaces.storage.user_repo_protocol import UserRepoProto
 from app.repositories.interfaces.storage.card_repo_protocol import CardRepoProtocol
 from app.repositories.interfaces.storage.collection_repo_protocol import CollectionRepoProtocol
 from app.repositories.interfaces.storage.friends_repo_protocol import FriendsRepoProtocol
+from app.repositories.interfaces.storage.notification_repo_protocol import NotificationRepoProtocol
+from app.repositories.interfaces.storage.achievement_repo_protocol import AchievementRepoProtocol
+from app.repositories.interfaces.storage.user_achievements_repo_protocol import UserAchievementRepoProtocol
 from app.repositories.storage.minio_image_storage import MinioImageStorage
 from app.repositories.storage.sql_image_repo import SqlImageRepo
 from app.repositories.storage.sql_card_repo import SqlCardRepo
@@ -12,6 +15,9 @@ from app.repositories.storage.sql_collection_repo import SqlCollectionRepo
 from app.repositories.storage.sql_refresh_token_repo import SqlRefreshTokenRepo
 from app.repositories.storage.sql_user_repo import SqlUserRepo
 from app.repositories.storage.sql_friends_repo import SqlFriendsRepo
+from app.repositories.storage.sql_notification_repo import SqlNotificationRepo
+from app.repositories.storage.sql_achievement_repo import SqlAchievementRepo
+from app.repositories.storage.sql_user_achievements_repo import SqlUserAchievementRepo
 
 
 # This is a unit of work. It groups repositories that depend on another.
@@ -26,3 +32,5 @@ class SqlUnitOfWork:
         self.refresh_token_repo: RefreshTokenRepositoryProtocol = SqlRefreshTokenRepo()
         self.card_repo: CardRepoProtocol = SqlCardRepo()
         self.collection_repo: CollectionRepoProtocol = SqlCollectionRepo()
+        self.achievement_repo: AchievementRepoProtocol = SqlAchievementRepo()
+        self.user_achievement_repo: UserAchievementRepoProtocol = SqlUserAchievementRepo()

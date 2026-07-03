@@ -13,7 +13,7 @@ from app.services.category_errors import (
 
 class CategoryService:
     ALLOWED_CATEGORIES = (
-        "Pflanze",
+        "Pflanzen",
         "Insekten",
         "Tiere",
         "Nahrung",
@@ -25,10 +25,13 @@ class CategoryService:
     )
     UNKNOWN_CATEGORY = "Unbekannt"
     HINT_MAPPING = {
-        "plant": "Pflanze",
-        "plants": "Pflanze",
-        "pflanze": "Pflanze",
+        "plant": "Pflanzen",
+        "plants": "Pflanzen",
+        "nature": "Pflanzen",
+        "pflanze": "Pflanzen",
         "insect": "Insekten",
+        "bug": "Insekten",
+        "käfer": "Insekten",
         "insects": "Insekten",
         "insekten": "Insekten",
         "animal": "Tiere",
@@ -42,11 +45,15 @@ class CategoryService:
         "tech": "Technik",
         "technik": "Technik",
         "mechanic": "Mechanik",
+        "vehicle": "Mechanik",
+        "fahrzeug": "Mechanik",
         "mechanical": "Mechanik",
         "machine": "Mechanik",
         "mechanik": "Mechanik",
         "rock": "Gestein",
+        "gem": "Gestein",
         "stone": "Gestein",
+        "ore": "Gestein",
         "mineral": "Gestein",
         "gestein": "Gestein",
         "object": "Gegenstände",

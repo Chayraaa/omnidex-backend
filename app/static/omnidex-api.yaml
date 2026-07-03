@@ -923,7 +923,7 @@ paths:
             ETag:
               $ref: "#/components/headers/ETag"
 
-  /v1/collections/me:
+  /v1/collection/me:
     get:
       summary: List the authenticated user's saved collection entries
       tags:
@@ -1019,7 +1019,7 @@ paths:
             Vary:
               $ref: "#/components/headers/Vary"
 
-  /v1/collections/me/{entryId}:
+  /v1/collection/me/{entryId}:
     get:
       summary: Get details of a single collection entry owned by the authenticated user
       tags:
@@ -1072,7 +1072,7 @@ paths:
                   error:
                     type: string
 
-  /v1/collections/me/{entryId}/category:
+  /v1/collection/me/{entryId}/category:
     patch:
       summary: Update the category of one collection entry owned by the authenticated user
       tags:

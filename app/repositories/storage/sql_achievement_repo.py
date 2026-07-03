@@ -1,11 +1,22 @@
-from app.domain_models.achievement import Achievement
 from app.database_models.achievement_model import AchievementModel
 from app.extensions import db
+from app.domain_models.achievement import Achievement
 
 
 class SqlAchievementRepo:
-    def get_all_achievements(self) -> Achievement | None:
-        pass
+    def get_all_achievements(self) -> list[Achievement]:
+        db_obj = db.session.query(AchievementModel).all()
+
+        return [
+            Achievement(
+                id=obj.id,
+                name=obj.name,
+                required=obj.required,
+                achievementReward=obj.achievementReward,
+                icon=obj.icon
+            )
+            for obj in db_obj
+        ]
 
     def get_achievement(self, achievement_id: int) -> Achievement | None:
         db_obj = db.session.get(AchievementModel, achievement_id)
