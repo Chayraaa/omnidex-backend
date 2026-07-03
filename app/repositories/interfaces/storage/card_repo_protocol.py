@@ -1,6 +1,5 @@
 from typing import Protocol
 
-
 class CardRepoProtocol(Protocol):
     def create_card(
         self,
@@ -18,3 +17,7 @@ class CardRepoProtocol(Protocol):
     ) -> tuple[int, str | None]: ...
 
     def card_name_exists(self, *, user_id: int, name: str) -> bool: ...
+
+    def count_cards(self, user_id: int) -> int:...
+
+    def count_cards_by_category(self, user_id: int, category: str) -> int:...

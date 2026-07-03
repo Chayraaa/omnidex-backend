@@ -34,10 +34,11 @@ from app.extensions import db
 from openapi_core import OpenAPI
 from app.services.notification_service import NotificationService
 from app.repositories.storage.sql_notification_repo import SqlNotificationRepo
+from app.services.achievement_service import AchievementService
+from app.services.wiki_service import WikiService
 
 # Add all the db database_models here
 from app.database_models.user_model import UserModel
-from app.services.wiki_service import WikiService
 from app.database_models.achievement_model import AchievementModel
 from app.database_models.card_model import CardModel
 from app.database_models.refresh_token_model import RefreshTokenModel
@@ -116,9 +117,18 @@ def setup_services(app: Flask):
     storage_unit_of_work = SqlUnitOfWork()
 
     app.password_service = PasswordService()
+    app.achievement_service = AchievementService(
+        storage_unit_of_work.user_achievement_repo,
+        storage_unit_of_work.achievement_repo,
+        storage_unit_of_work.card_repo,
+    )
     # This is a user management service that you can give different implementations to
     # A service could also take another service as a dependency. Though make sure to prevent circular dependencies.
-    app.user_service = UserService(storage_unit_of_work.user_repo, storage_unit_of_work.friends_repo)
+    app.user_service = UserService(
+        storage_unit_of_work.user_repo,
+        storage_unit_of_work.friends_repo,
+        achievement_service = app.achievement_service
+    )
     app.auth_service = AuthService(storage_unit_of_work.user_repo, storage_unit_of_work.refresh_token_repo)
     app.image_service = ImageService(storage_unit_of_work.image_storage, storage_unit_of_work.image_repo,
                                      base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"))
@@ -144,6 +154,7 @@ def setup_services(app: Flask):
         base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"),
         category_service=app.category_service,
         label_translation_service=app.label_translation_service,
+        achievement_service=app.achievement_service,
     )
     app.collection_service = CollectionService(
         storage_unit_of_work.collection_repo,
@@ -166,7 +177,7 @@ def setup_routes(app: Flask):
     from .routes.wiki import wiki
     app.register_blueprint(wiki, url_prefix="/v1/wiki")
     from .routes.collection import collection
-    app.register_blueprint(collection, url_prefix="/v1/collections")
+    app.register_blueprint(collection, url_prefix="/v1/collection")
     from .routes.achievement import achievements
     app.register_blueprint(achievements, url_prefix="/v1/achievements")
     from .routes.friends import friends

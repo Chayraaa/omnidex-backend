@@ -33,6 +33,7 @@ class ScanService:
         base_url: str,
         category_service=None,
         label_translation_service=None,
+        achievement_service=None,
     ):
         self.recognition_service = recognition_service
         self.wiki_service = wiki_service
@@ -42,6 +43,7 @@ class ScanService:
         self.base_url = base_url.rstrip("/")
         self.category_service = category_service or CategoryService()
         self.label_translation_service = label_translation_service or LabelTranslationService()
+        self.achievement_service = achievement_service
 
     def create_scan(self, user_id: int, image_input: bytes) -> ScanResultDto:
         if user_id <= 0:
@@ -74,6 +76,9 @@ class ScanService:
                 for alternative in recognition_result.alternatives
             ],
         )
+
+        if self.achievement_service is not None:
+            self.achievement_service.process_card_created(user_id)
 
         return ScanResultDto(
             label=display_label,
