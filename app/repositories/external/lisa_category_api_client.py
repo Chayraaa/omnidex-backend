@@ -61,6 +61,7 @@ class LisaCategoryApiClient(CategoryAssignmentAdapterProtocol):
 
         body = self._read_json_response(response)
         content = self._extract_assistant_content(body)
+        print("LISA: Step 2 done")
         if isinstance(content, dict):
             return content
         if not isinstance(content, str) or not content.strip():

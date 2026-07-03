@@ -3,6 +3,7 @@ import uuid
 from app.repositories.interfaces.storage.image_repo_protocol import ImageRepoProtocol
 from app.repositories.interfaces.storage.refresh_token_repo_protocol import RefreshTokenRepositoryProtocol
 from app.repositories.interfaces.storage.user_repo_protocol import UserRepoProtocol
+from app.services.achievement_service import AchievementService
 from app.services.password_service import PasswordService
 
 
@@ -11,9 +12,11 @@ class GoogleOauthService:
             self,
             user_repo: UserRepoProtocol,
             refresh_token_repo: RefreshTokenRepositoryProtocol,
+            achievement_service: AchievementService
     ):
         self.user_repo = user_repo
         self.refresh_token_repo = refresh_token_repo
+        self.achievement_service = achievement_service
 
     def authenticate_user(self, token: dict) -> tuple[str, str] | None:
 
@@ -33,6 +36,7 @@ class GoogleOauthService:
             )
 
             user = self.user_repo.get_user_by_email(email)
+            self.achievement_service.ensure_user_achievements(user)
 
         if not user or user.oauth != "google":
             return None

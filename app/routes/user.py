@@ -107,8 +107,9 @@ def get_profile_picture(user_id: int):
 
 
 @users.route("/<int:userId>", methods=["GET"])
+@login_required
 @validate
-def get_user(userId: int):
+def get_user(user, userId: int):
     user = current_app.user_service.get_user(userId)
 
     if not user:

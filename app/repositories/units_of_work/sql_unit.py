@@ -15,7 +15,6 @@ from app.repositories.storage.sql_collection_repo import SqlCollectionRepo
 from app.repositories.storage.sql_refresh_token_repo import SqlRefreshTokenRepo
 from app.repositories.storage.sql_user_repo import SqlUserRepo
 from app.repositories.storage.sql_friends_repo import SqlFriendsRepo
-from app.repositories.storage.sql_notification_repo import SqlNotificationRepo
 from app.repositories.storage.sql_achievement_repo import SqlAchievementRepo
 from app.repositories.storage.sql_user_achievements_repo import SqlUserAchievementRepo
 

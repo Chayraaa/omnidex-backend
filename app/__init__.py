@@ -11,6 +11,7 @@ from openapi_core.validation.request.exceptions import InvalidRequestBody
 from openapi_core.validation.schemas.exceptions import InvalidSchemaValue
 from sqlalchemy import inspect
 from sqlalchemy import text
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app.repositories.units_of_work.sql_unit import SqlUnitOfWork
 from app.services.auth_service import AuthService
@@ -30,8 +31,6 @@ from app.services.friends_service import FriendsService
 from app.repositories.external.lisa_category_api_client import LisaCategoryApiClient
 from app.extensions import db
 from openapi_core import OpenAPI
-from app.services.notification_service import NotificationService
-from app.repositories.storage.sql_notification_repo import SqlNotificationRepo
 from app.services.achievement_service import AchievementService
 from app.services.wiki_service import WikiService
 from app.http_cache import json_no_store
@@ -131,10 +130,6 @@ def setup_services(app: Flask):
     app.auth_service = AuthService(storage_unit_of_work.user_repo, storage_unit_of_work.refresh_token_repo)
     app.image_service = ImageService(storage_unit_of_work.image_storage, storage_unit_of_work.image_repo,
                                      base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"))
-    app.google_oauth_service = GoogleOauthService(
-        storage_unit_of_work.user_repo,
-        storage_unit_of_work.refresh_token_repo,
-    )
     app.wiki_service = WikiService(WikiRepo())
     lisa_adapter = LisaApiClient()
     lisa_summary_adapter = LisaSummaryApiClient()
@@ -158,7 +153,8 @@ def setup_services(app: Flask):
         base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"),
     )
     app.google_oauth_service = GoogleOauthService(storage_unit_of_work.user_repo,
-                                                  storage_unit_of_work.refresh_token_repo)
+                                                  storage_unit_of_work.refresh_token_repo,
+                                                  app.achievement_service)
     app.friends_service = FriendsService(
         storage_unit_of_work.friends_repo,
         storage_unit_of_work.user_repo,
@@ -267,6 +263,8 @@ def open_api_page(app):
 # Here everything for app creation is inited.
 def create_app():
     app = Flask(__name__)
+
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
     setup_logging(app)
     setup_openapi(app)

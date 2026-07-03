@@ -1,0 +1,15 @@
+http:
+  routers:
+    backend:
+      rule: "Host(`omnidex.bebelebeb.de`)"
+      entrypoints:
+        - websecure
+      service: backend
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    backend:
+      loadBalancer:
+        servers:
+          - url: "http://backend:5000"

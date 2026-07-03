@@ -4,7 +4,7 @@ info:
   version: 1.0.0
 servers:
   - url: http://127.0.0.1:5000
-  - url: http://omnidex.bebelebeb.de:5000
+  - url: https://omnidex.bebelebeb.de
 
 components:
   securitySchemes:
@@ -340,11 +340,11 @@ components:
     achievement:
       type: object
       required:
-          - id
-          - name
-          - required
-          - achievementReward
-          - icon
+        - id
+        - name
+        - required
+        - achievementReward
+        - icon
       properties:
         id:
           type: integer
@@ -356,7 +356,7 @@ components:
         required:
           type: integer
           nullable: false
-        achievementReward: 
+        achievementReward:
           type: integer
           example: 200
         icon:
@@ -368,9 +368,9 @@ components:
     achievementProgress:
       type: object
       required:
-          - id
-          - isDone
-          - currentProgress
+        - id
+        - isDone
+        - currentProgress
       properties:
         id:
           type: integer
@@ -923,7 +923,7 @@ paths:
             ETag:
               $ref: "#/components/headers/ETag"
 
-  /v1/collections/me:
+  /v1/collection/me:
     get:
       summary: List the authenticated user's saved collection entries
       tags:
@@ -940,7 +940,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [newest, oldest, alphabetical]
+            enum: [ newest, oldest, alphabetical ]
             default: newest
           description: Sort order by scan creation time or object label.
         - in: query
@@ -949,15 +949,15 @@ paths:
           schema:
             type: string
             enum:
-              - Pflanze
-              - Insekten
-              - Tiere
-              - Nahrung
-              - Unbekannt
-              - Technik
-              - Mechanik
-              - Gestein
-              - Gegenstände
+              - pflanzen
+              - insekten
+              - tiere
+              - nahrung
+              - unbekannt
+              - technik
+              - mechanik
+              - gestein
+              - gegenstände
           description: Filter by the already stored category value.
         - in: query
           name: limit
@@ -1019,7 +1019,7 @@ paths:
             Vary:
               $ref: "#/components/headers/Vary"
 
-  /v1/collections/me/{entryId}:
+  /v1/collection/me/{entryId}:
     get:
       summary: Get details of a single collection entry owned by the authenticated user
       tags:
@@ -1102,15 +1102,15 @@ paths:
                 category:
                   type: string
                   enum:
-                    - Pflanze
-                    - Insekten
-                    - Tiere
-                    - Nahrung
-                    - Unbekannt
-                    - Technik
-                    - Mechanik
-                    - Gestein
-                    - Gegenstände
+                  - pflanzen
+                  - insekten
+                  - tiere
+                  - nahrung
+                  - unbekannt
+                  - technik
+                  - mechanik
+                  - gestein
+                  - gegenstände
                   example: Tiere
       responses:
         "200":
@@ -1581,7 +1581,7 @@ paths:
             schema:
               type: array
               items:
-                $ref: "#/components/schemas/achievementProgress"   
+                $ref: "#/components/schemas/achievementProgress"
       responses:
         "200":
           description: Progress edited successfully

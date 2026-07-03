@@ -60,5 +60,6 @@ class SqlCollectionRepo(CollectionRepoProtocol):
         if card is None:
             return None
         card.category = category
+        print(category)
         db.session.commit()
         return card

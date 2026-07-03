@@ -17,7 +17,7 @@ class SummaryService:
             raise InvalidSummaryResponse("Wiki text is required for summarization")
 
         prompt = (
-            f"Summarize the following information about '{cleaned_label}' for a mobile object card. "
+            f"Summarize the following information."
             "Return maximum two short sentences. Keep it factual, simple, and user-friendly. "
             "Do not add unsupported facts.\n\n"
             f"Information:\n{cleaned_text}"

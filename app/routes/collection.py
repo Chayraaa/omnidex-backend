@@ -85,6 +85,7 @@ def get_collection_entry_detail(user: User, entryId: int):
 def update_collection_entry_category(user: User, entryId: int):
     data = request.get_json() or {}
     category = data.get("category")
+    print(data)
 
     try:
         if request.headers.get("If-Match"):
