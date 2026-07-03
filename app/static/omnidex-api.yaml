@@ -923,7 +923,7 @@ paths:
             ETag:
               $ref: "#/components/headers/ETag"
 
-  /v1/collection/me:
+  /v1/collections/me:
     get:
       summary: List the authenticated user's saved collection entries
       tags:
@@ -1019,7 +1019,7 @@ paths:
             Vary:
               $ref: "#/components/headers/Vary"
 
-  /v1/collection/me/{entryId}:
+  /v1/collections/me/{entryId}:
     get:
       summary: Get details of a single collection entry owned by the authenticated user
       tags:
