@@ -40,6 +40,9 @@ class FriendsService:
     # ACCEPT REQUEST
     def accept_friend_request(self, receiver: User, sender_id: int):
         friendship = self.friends_repo.get_friend_request(sender_id, receiver.id)
+        print(sender_id)
+        print(receiver.id)
+        print(friendship)
 
         if not friendship or friendship.status != FriendshipStatus.PENDING.value:
             return False
@@ -86,7 +89,7 @@ class FriendsService:
     
     # GET INCOMING REQUESTS (FIXED TO MATCH ROUTE)
     def get_incoming_requests(self, user: User):
-        friendships = self.friends_repo.get_friendships(user.id)
+        friendships = self.friends_repo.get_pending(user.id)
 
         return [
             {

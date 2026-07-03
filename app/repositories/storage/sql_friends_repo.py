@@ -91,6 +91,32 @@ class SqlFriendsRepo:
             })
 
         return result
+
+    def get_pending(self, user_id: int) -> list[dict]:
+        rows = (
+            db.session.query(FriendsModel, UserModel)
+            .join(
+                UserModel,
+                (
+                        (UserModel.id == FriendsModel.friend_id)
+                )
+            )
+            .filter(
+                (FriendsModel.friend_id == user_id) &
+                (FriendsModel.status == FriendshipStatus.PENDING.value)
+            )
+            .all()
+        )
+        print(rows)
+        return [
+            {
+                "friend_id": friendship.user_id,
+                "name": other_user.name,
+                "profile_picture_key": other_user.profile_picture_key,
+                "status": friendship.status,
+            }
+            for friendship, other_user in rows
+        ]
     
 
     def delete_friendship(self, user_id: int, friend_id: int) -> bool:
