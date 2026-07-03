@@ -17,10 +17,10 @@ class SummaryService:
             raise InvalidSummaryResponse("Wiki text is required for summarization")
 
         prompt = (
-            f"Summarize the following information."
-            "Return maximum two short sentences. Keep it factual, simple, and user-friendly. "
-            "Do not add unsupported facts.\n\n"
-            f"Information:\n{cleaned_text}"
+            f"Fasse die folgenden Informationen über '{cleaned_label}' für eine mobile Objektkarte auf Deutsch "
+            "zusammen. Gib maximal zwei kurze Sätze zurück. Bleibe sachlich, einfach und nutzerfreundlich. "
+            "Füge keine Fakten hinzu, die nicht im Text stehen.\n\n"
+            f"Informationen:\n{cleaned_text}"
         )
         summary = self.summary_adapter.summarize_text(prompt)
         if not isinstance(summary, str) or not summary.strip():

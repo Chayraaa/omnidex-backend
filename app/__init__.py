@@ -23,10 +23,12 @@ from app.services.scan_service import ScanService
 from app.services.collection_service import CollectionService
 from app.services.summary_service import SummaryService
 from app.services.category_service import CategoryService
+from app.services.label_translation_service import LabelTranslationService
 from app.services.user_service import UserService
 from app.repositories.external.wiki_repo import WikiRepo
 from app.repositories.external.lisa_api_client import LisaApiClient
 from app.repositories.external.lisa_summary_api_client import LisaSummaryApiClient
+from app.repositories.external.lisa_label_translation_api_client import LisaLabelTranslationApiClient
 from app.services.friends_service import FriendsService
 from app.repositories.external.lisa_category_api_client import LisaCategoryApiClient
 from app.extensions import db
@@ -134,9 +136,11 @@ def setup_services(app: Flask):
     lisa_adapter = LisaApiClient()
     lisa_summary_adapter = LisaSummaryApiClient()
     lisa_category_adapter = LisaCategoryApiClient()
+    lisa_label_translation_adapter = LisaLabelTranslationApiClient()
     app.recognition_service = RecognitionService(lisa_adapter)
     app.summary_service = SummaryService(lisa_summary_adapter)
     app.category_service = CategoryService(lisa_category_adapter)
+    app.label_translation_service = LabelTranslationService(lisa_label_translation_adapter)
     app.scan_service = ScanService(
         app.recognition_service,
         app.wiki_service,
@@ -145,8 +149,8 @@ def setup_services(app: Flask):
         storage_unit_of_work.card_repo,
         base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"),
         category_service=app.category_service,
+        label_translation_service=app.label_translation_service,
         achievement_service=app.achievement_service,
-
     )
     app.collection_service = CollectionService(
         storage_unit_of_work.collection_repo,
