@@ -182,4 +182,4 @@ class CollectionService:
             return None
         if image_key.startswith("http://") or image_key.startswith("https://"):
             return image_key
-        return f"{self.base_url}/v1/image/{image_key.lstrip('/')}"
+        return f"{self.base_url}/v1/images/{image_key.lstrip('/')}"

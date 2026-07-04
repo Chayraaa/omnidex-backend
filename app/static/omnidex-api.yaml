@@ -14,7 +14,7 @@ components:
       bearerFormat: JWT
     
     googleOAuth:
-      type: oauth2 
+      type: oauth2
       flows:
         authorizationCode:
           authorizationUrl: https://accounts.google.com/o/oauth2/v2/auth
@@ -426,7 +426,7 @@ paths:
       description: Creates a new user with a username, email and password.
       tags:
         - Users
-       
+      security: [ ]
       requestBody:
         required: true
         content:
@@ -474,6 +474,29 @@ paths:
                   message:
                     type: string
                     example: User already exists
+    patch:
+      summary: Edit current user profile
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/user"
+      responses:
+        "200":
+          description: User updated successfully
+        "401":
+          description: Unauthorized. You are not logged in.
+        "403":
+          description: Forbidden. You are not said user or lack the permission to edit.
+        "409":
+          description: Conflict (e.g. duplicate username)
+        "422":
+          description: Validation failed
+        "500":
+          description: Internal server error
 
   /v1/users/auth:
     post:
@@ -623,7 +646,7 @@ paths:
       description: Returns a public Wikipedia extract and supports HTTP caching with Cache-Control, ETag and 304 revalidation.
       tags:
         - Wiki
-       
+
       parameters:
         - in: path
           name: title
@@ -686,7 +709,7 @@ paths:
       description: Recognizes the uploaded image and enriches it with Wikipedia information.
       tags:
         - Scan
-       
+
       requestBody:
         required: true
         content:
@@ -725,7 +748,7 @@ paths:
       description: Uploads and sets the profile picture for the authenticated user.
       tags:
         - Users
-       
+
 
       requestBody:
         required: true
@@ -768,10 +791,10 @@ paths:
       description: Returns a temporary URL to access the user's profile picture.
       tags:
         - Users
-       
+
 
       parameters:
-        - name: user_id
+        - name: userId
           in: path
           required: true
           schema:
@@ -801,7 +824,7 @@ paths:
   /v1/images/{key}:
     get:
       summary: Get image by key
-       
+
       parameters:
         - in: path
           name: key
@@ -841,7 +864,7 @@ paths:
       summary: List the authenticated user's saved collection entries
       tags:
         - Collection
-       
+
       parameters:
         - in: query
           name: query
@@ -928,7 +951,7 @@ paths:
       summary: Get details of a single collection entry owned by the authenticated user
       tags:
         - Collection
-       
+
       parameters:
         - in: path
           name: entryId
@@ -981,7 +1004,7 @@ paths:
       summary: Delete a collection entry owned by the authenticated user
       tags:
         - Collection
-       
+
       parameters:
         - in: path
           name: entryId
@@ -1010,7 +1033,7 @@ paths:
       summary: Update the category of one collection entry owned by the authenticated user
       tags:
         - Collection
-       
+
       parameters:
         - in: path
           name: entryId
@@ -1077,7 +1100,7 @@ paths:
       summary: Retrieve a user by userId
       tags:
         - Users
-       
+
       parameters:
         - name: userId
           in: path
@@ -1103,7 +1126,7 @@ paths:
       summary: Delete a user by userId
       tags:
         - Users
-       
+
       parameters:
         - name: userId
           in: path
@@ -1131,7 +1154,7 @@ paths:
       summary: Send friend request
       tags:
         - Friends
-       
+
       parameters:
         - name: friendCode
           in: path
@@ -1166,12 +1189,12 @@ paths:
                     type: string
                     example: Invalid friend code or request already exists
 
-  /v1/friends/requests/{senderId}: 
+  /v1/friends/requests/{senderId}:
     patch:
       summary: Accept friend request
       tags:
         - Friends
-        
+
       parameters:
         - name: senderId
           in: path
@@ -1217,7 +1240,7 @@ paths:
       summary: Get incoming friend requests
       tags:
         - Friends
-       
+
       responses:
         "200":
           description: Incoming friend requests retrieved
@@ -1238,7 +1261,7 @@ paths:
       summary: Remove friend
       tags:
         - Friends
-       
+
       parameters:
         - name: user_id
           in: path
@@ -1278,7 +1301,7 @@ paths:
       summary: Get friend list
       tags:
         - Friends
-       
+
       responses:
         "200":
           description: Friend list retrieved
@@ -1323,7 +1346,7 @@ paths:
       summary: Retrieve all achievements
       tags:
         - Achievements
-       
+
       responses:
         "200":
           description: Achievements retrieved successfully
@@ -1343,8 +1366,8 @@ paths:
       summary: Get user progress
       tags:
         - Achievements
-       
-     
+
+
       responses:
         "200":
           description: Progress retrieved successfully
@@ -1363,12 +1386,6 @@ paths:
       summary: Edit User achievement progress
       tags:
         - Achievements
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: integer
       requestBody:
         required: true
         content:
@@ -1394,31 +1411,7 @@ paths:
 
 
 
-  /v1/users:
-    patch:
-      summary: Edit current user profile
-      tags:
-        - Users
-       
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/user"
-      responses:
-        "200":
-          description: User updated successfully
-        "401":
-          description: Unauthorized. You are not logged in.
-        "403":
-          description: Forbidden. You are not said user or lack the permission to edit.
-        "409":
-          description: Conflict (e.g. duplicate username)
-        "422":
-          description: Validation failed
-        "500":
-          description: Internal server error
+
 
 
 
@@ -1427,7 +1420,7 @@ paths:
       summary: Retrieve user experience
       tags:
         - Users
-       
+
       parameters:
         - name: userId
           in: path

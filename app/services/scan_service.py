@@ -244,4 +244,4 @@ class ScanService:
         return f"https://en.wikipedia.org/wiki/{quote(label.replace(' ', '_'))}"
 
     def _build_image_reference(self, key: str) -> str:
-        return f"{self.base_url}/v1/image/{key}"
+        return f"{self.base_url}/v1/images/{key}"

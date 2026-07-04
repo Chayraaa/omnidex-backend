@@ -12,10 +12,11 @@ class FriendshipStatus(str, Enum):
 
 
 class FriendsService:
-    def __init__(self, friends_repo: FriendsRepoProtocol, user_repo: UserRepoProtocol, card_repo: CardRepoProtocol):
+    def __init__(self, friends_repo: FriendsRepoProtocol, user_repo: UserRepoProtocol, card_repo: CardRepoProtocol, base_url: str):
         self.friends_repo = friends_repo
         self.user_repo = user_repo
         self.card_repo = card_repo
+        self.base_url = base_url.rstrip("/")
 
     # SEND FRIEND REQUEST
     def create_friend_request(self, sender: User, friend_code: str) -> bool:
@@ -36,7 +37,7 @@ class FriendsService:
         )
 
         return True
-    
+
     # ACCEPT REQUEST
     def accept_friend_request(self, receiver: User, sender_id: int):
         friendship = self.friends_repo.get_friend_request(sender_id, receiver.id)
@@ -50,8 +51,6 @@ class FriendsService:
         friendship.status = FriendshipStatus.ACCEPTED.value
         self.friends_repo.update_friend_request(friendship)
         return True
-
-
 
     # DECLINE REQUEST
     def decline_friend_request(self, receiver: User, sender_id: int):
@@ -84,9 +83,8 @@ class FriendsService:
                 "status": f["status"]
             })
 
-
         return result
-    
+
     # GET INCOMING REQUESTS (FIXED TO MATCH ROUTE)
     def get_incoming_requests(self, user: User):
         friendships = self.friends_repo.get_pending(user.id)
@@ -101,26 +99,31 @@ class FriendsService:
             for f in friendships
             if f["status"] == FriendshipStatus.PENDING.value
         ]
-    
+
+    def _build_image_url(self, image_key: str | None) -> str | None:
+        if not isinstance(image_key, str) or not image_key.strip():
+            return None
+        if image_key.startswith("http://") or image_key.startswith("https://"):
+            return image_key
+        return f"{self.base_url}/v1/images/{image_key.lstrip('/')}"
+
     def get_friends_feed(self, user: User):
         friend_ids = self.friends_repo.get_friend_ids(user.id)
 
         if not friend_ids:
             return []
 
-        cards = self.card_repo.get_cards_by_friends(friend_ids)
+        cards = self.card_repo.get_cards_by_friends(friend_ids)[:50]
 
         return [
             {
-                "card_id": c.id,
-                "user_id": c.user_id,
+                "id": c.id,
+                "firstDiscoveredUserId": c.user_id,
                 "name": c.name,
-                "image_key": c.image_key,
-                "card_summary": c.card_summary,
-                "created_at": c.created_at.isoformat() if c.created_at else None,
+                "pictureUrl": self._build_image_url(c.image_key),
+                "description": c.card_summary,
+                "category": c.category,
+                "entryDate": c.created_at.isoformat() if c.created_at else None,
             }
             for c in cards
         ]
-    
-
-

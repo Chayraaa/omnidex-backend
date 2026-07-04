@@ -23,7 +23,7 @@ class SqlCardRepo(CardRepoProtocol):
             name=name,
             image_key=image_key,
             card_summary=card_summary,
-            category=category,
+            category=category.lower() if category else None,
             confidence=confidence,
             description=description,
             source_title=source_title,

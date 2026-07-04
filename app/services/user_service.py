@@ -27,11 +27,13 @@ class UserService:
 
     def create_user(self, name: str, email: str, password: str) -> bool:
         if self.repo.get_user_by_email(email):
+            print("User already exists")
             return False
         hashed_password = PasswordService.hash_password(password)
         friend_code = self.generate_friend_code()
         success = self.repo.create_user(name=name, password=hashed_password, email=email, friend_code=friend_code)
         if not success:
+            print("Failed to create user")
             return False
         user = self.repo.get_user_by_email(email)
         self.achievement_service.ensure_user_achievements(user)

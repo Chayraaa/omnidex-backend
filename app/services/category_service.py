@@ -13,17 +13,17 @@ from app.services.category_errors import (
 
 class CategoryService:
     ALLOWED_CATEGORIES = (
-        "Pflanze",
-        "Insekten",
-        "Tiere",
-        "Nahrung",
-        "Unbekannt",
-        "Technik",
-        "Mechanik",
-        "Gestein",
-        "Gegenstände",
+        "pflanzen",
+        "insekten",
+        "tiere",
+        "nahrung",
+        "unbekannt",
+        "technik",
+        "mechanik",
+        "gestein",
+        "gegenstände",
     )
-    UNKNOWN_CATEGORY = "Unbekannt"
+    UNKNOWN_CATEGORY = "unbekannt"
     HINT_MAPPING = {
         "plant": "Pflanze",
         "plants": "Pflanze",

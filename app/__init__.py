@@ -162,7 +162,8 @@ def setup_services(app: Flask):
     app.friends_service = FriendsService(
         storage_unit_of_work.friends_repo,
         storage_unit_of_work.user_repo,
-        storage_unit_of_work.card_repo
+        storage_unit_of_work.card_repo,
+        base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000")
     )
 
 
@@ -173,13 +174,13 @@ def setup_routes(app: Flask):
     from .routes.user import users
     app.register_blueprint(users, url_prefix="/v1/users")
     from .routes.scan import scan
-    app.register_blueprint(scan, url_prefix="/v1/scan")
+    app.register_blueprint(scan, url_prefix="/v1/scans")
     from .routes.image import image
-    app.register_blueprint(image, url_prefix="/v1/image")
+    app.register_blueprint(image, url_prefix="/v1/images")
     from .routes.wiki import wiki
     app.register_blueprint(wiki, url_prefix="/v1/wiki")
     from .routes.collection import collection
-    app.register_blueprint(collection, url_prefix="/v1/collection")
+    app.register_blueprint(collection, url_prefix="/v1/collections")
     from .routes.achievement import achievements
     app.register_blueprint(achievements, url_prefix="/v1/achievements")
     from .routes.friends import friends

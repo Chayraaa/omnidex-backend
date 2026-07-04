@@ -12,17 +12,9 @@ friends = Blueprint("friends", __name__)
 
 
 
-# Service factory 
+# Service factory
 def get_friends_service():
-    friends_repo = SqlFriendsRepo()
-    user_repo = SqlUserRepo()
-    card_repo = SqlCardRepo()
-
-    return FriendsService(
-        friends_repo,
-        user_repo,
-        card_repo
-    )
+    return current_app.friends_service
 
 
 # SEND FRIEND REQUEST
@@ -49,7 +41,8 @@ def send_friend_request(user: User, friend_code):
 def update_friend_request(user: User, sender_id):
     service = get_friends_service()
 
-    status = request.get_json()
+    status = request.get_json().get("status")
+
 
     if status == "ACCEPTED":
         success = service.accept_friend_request(user, sender_id)
@@ -133,8 +126,9 @@ def get_friends(user: User):
 @login_required
 def get_friends_feed(user: User):
     service = get_friends_service()
-
+    feed = service.get_friends_feed(user)
+    print(feed)
     return jsonify({
         "success": True,
-        "feed": service.get_friends_feed(user)
-    })
+        "feed": feed
+    }), 200

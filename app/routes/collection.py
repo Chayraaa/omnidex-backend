@@ -103,7 +103,7 @@ def delete_collection_entry(user: User, entryId: int):
     return ("", 204)
 
 
-@collection.route("/<int:entryId>/category", methods=["PATCH"])
+@collection.route("/<int:entryId>/categories", methods=["PATCH"])
 @login_required
 @validate
 def update_collection_entry_category(user: User, entryId: int):
