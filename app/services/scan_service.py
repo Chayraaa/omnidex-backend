@@ -84,7 +84,7 @@ class ScanService:
             label=display_label,
             confidence=recognition_result.confidence,
             category_hint=recognition_result.category_hint,
-            category=category_assignment.category,
+            category=category_assignment.category.lower(),
             alternatives=[
                 ScanAlternativeDto(label=alternative.label, confidence=alternative.confidence)
                 for alternative in recognition_result.alternatives
