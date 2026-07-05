@@ -8,7 +8,7 @@ headers = {
 
 class WikiRepo(WikiRepoProtocol):
 
-    def __init__(self, base_url: str = "https://en.wikipedia.org/api/rest_v1"):
+    def __init__(self, base_url: str = "https://de.wikipedia.org/api/rest_v1"):
         self.base_url = base_url
 
     def get_article_summary(self, title: str) -> str:

@@ -225,7 +225,7 @@ class ScanService:
 
     @staticmethod
     def _build_wikipedia_url(label: str) -> str:
-        return f"https://en.wikipedia.org/wiki/{quote(label.replace(' ', '_'))}"
+        return f"https://de.wikipedia.org/wiki/{quote(label.replace(' ', '_'))}"
 
     def _build_image_reference(self, key: str) -> str:
         return f"{self.base_url}/api/image/{key}"
