@@ -70,7 +70,7 @@ class ScanService:
             description=description,
             source_title=recognition_result.label if knowledge_enriched else None,
             source_url=self._build_wikipedia_url(recognition_result.label) if knowledge_enriched else None,
-            category=category_assignment.category,
+            category=category_assignment.category.lower(),
             alternatives=[
                 {"label": alternative.label, "confidence": alternative.confidence}
                 for alternative in recognition_result.alternatives
@@ -201,7 +201,7 @@ class ScanService:
                 name=name,
                 image_key=key,
                 card_summary=card_summary,
-                category=category,
+                category=category.lower(),
                 confidence=confidence,
                 description=description,
                 source_title=source_title,
