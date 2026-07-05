@@ -64,7 +64,6 @@ class LisaApiClient(LisaAdapterProtocol):
             '"category_hint": "Kategorie oder null"}\n\n'
             "Regeln:\n"
             "- Verwende ausschließlich deutsche Begriffe\n"
-            "- Nutze ein einzelnes Substantiv im Singular\n"
             "- Keine Erklärungen, kein Text außerhalb von JSON\n"
             "- Keine englischen Begriffe verwenden\n"
             "- Wenn unbekannt, gib 'Unbekannt' zurück"

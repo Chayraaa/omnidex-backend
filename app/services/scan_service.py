@@ -59,7 +59,7 @@ class ScanService:
             wiki_text=description,
         )
         card_summary, summary_generated_by_ai = self._get_card_summary(recognition_result.label, description)
-        display_label = self._get_display_label(recognition_result.label)
+        display_label = recognition_result.label
 
         card_id, image_reference, created_at = self._persist_card(
             user_id=user_id,
