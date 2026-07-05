@@ -56,11 +56,20 @@ class LisaApiClient(LisaAdapterProtocol):
 
     def _request_completion(self, file_id: str) -> dict[str, Any]:
         prompt = (
-            "Identify the main object in this image. Return JSON only with this shape: "
-            '{"label": "object name", "confidence": 0.0, '
-            '"alternatives": [{"label": "other object", "confidence": 0.0}], '
-            '"category_hint": "category or null"}'
+            "Analysiere das Bild und erkenne das Hauptobjekt. "
+            "Gib die Antwort ausschließlich als JSON zurück. "
+            "Verwende dabei folgende Struktur: "
+            '{"label": "Objektname auf Deutsch", "confidence": 0.0, '
+            '"alternatives": [{"label": "alternatives Objekt", "confidence": 0.0}], '
+            '"category_hint": "Kategorie oder null"}\n\n'
+            "Regeln:\n"
+            "- Verwende ausschließlich deutsche Begriffe\n"
+            "- Nutze ein einzelnes Substantiv im Singular\n"
+            "- Keine Erklärungen, kein Text außerhalb von JSON\n"
+            "- Keine englischen Begriffe verwenden\n"
+            "- Wenn unbekannt, gib 'Unbekannt' zurück"
         )
+
         request_payload = {
             "model": self.model,
             "stream": False,

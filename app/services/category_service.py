@@ -109,17 +109,18 @@ class CategoryService:
 
     def _build_prompt(self, label: str, category_hint: str | None, wiki_text: str) -> str:
         categories = ", ".join(self.ALLOWED_CATEGORIES)
-        hint = category_hint or "None"
-        info = wiki_text if wiki_text else "No additional description available."
+        hint = category_hint or "Keine"
+        info = wiki_text if wiki_text else "Keine zusätzliche Beschreibung verfügbar."
+
         return (
-            "Assign the scanned object to exactly one of the allowed Omnidex categories. "
-            "Return JSON only. Include a score between 0 and 1 for every allowed category. "
-            "Do not invent categories. If the object is unclear, use Unbekannt.\n\n"
-            f"Allowed categories: {categories}\n"
-            f"Recognized label: {label}\n"
-            f"Recognition category hint: {hint}\n"
-            f"Object information:\n{info}\n\n"
-            "Required JSON shape:\n"
+            "Ordne das gescannte Objekt genau einer der erlaubten Omnidex-Kategorien zu. "
+            "Antworte ausschließlich im JSON-Format. Gib für jede Kategorie einen Wert zwischen 0 und 1 an. "
+            "Erfinde keine neuen Kategorien. Wenn das Objekt unklar ist, verwende 'Unbekannt'.\n\n"
+            f"Erlaubte Kategorien: {categories}\n"
+            f"Erkannter Label-Name: {label}\n"
+            f"Kategorie-Hinweis aus der Erkennung: {hint}\n"
+            f"Objektinformationen:\n{info}\n\n"
+            "Erwartetes JSON-Format:\n"
             '{"selected_category": "Tiere", "confidence": 0.91, '
             '"scores": {"Pflanze": 0.0, "Insekten": 0.0, "Tiere": 0.91, "Nahrung": 0.0, '
             '"Unbekannt": 0.0, "Technik": 0.0, "Mechanik": 0.0, "Gestein": 0.0, "Gegenstände": 0.09}}'

@@ -33,10 +33,10 @@ class LabelTranslationService:
     @staticmethod
     def _build_prompt(label: str) -> str:
         return (
-            "Translate the following object label into German for a mobile object card. "
-            "Return only the German object name. Use the common singular noun. "
-            "Do not add explanations, articles, punctuation, JSON or unsupported information. "
-            "If the label is a brand name, model name or proper noun, keep it unchanged.\n\n"
+            "Übersetze das folgende Objekt-Label ins Deutsche für eine mobile Objektkarte. "
+            "Gib ausschließlich den deutschen Objekt-Namen zurück. Verwende das gängige Substantiv im Singular. "
+            "Keine Erklärungen, keine Artikel, keine Satzzeichen, kein JSON oder zusätzliche Informationen. "
+            "Wenn es sich um einen Markennamen, Modellnamen oder Eigennamen handelt, lasse ihn unverändert.\n\n"
             f"Label:\n{label}"
         )
 
