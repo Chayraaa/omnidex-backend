@@ -61,7 +61,7 @@ class LabelTranslationService:
         if lines:
             cleaned = lines[0]
 
-        cleaned = re.sub(r"^[-*•\d.)\s]+", "", cleaned).strip()
+        cleaned = re.sub(r"^[-*•\s]*(?:\d+[.)]|(?:\d+\s*[-–—:]))\s+", "", cleaned).strip()
         cleaned = cleaned.strip("\"'“”„` ")
         cleaned = re.sub(r"^(der|die|das|ein|eine|einen|einem)\s+", "", cleaned).strip()
         cleaned = re.sub(r"\s+", " ", cleaned).strip()

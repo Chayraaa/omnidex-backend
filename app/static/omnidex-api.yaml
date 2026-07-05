@@ -4,6 +4,7 @@ info:
   version: 1.0.0
 servers:
   - url: http://127.0.0.1:5000
+  - url: https://omnidex.bebelebeb.de
 
 components:
   securitySchemes:
@@ -11,6 +12,17 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    
+    googleOAuth:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://accounts.google.com/o/oauth2/v2/auth
+          tokenUrl: https://oauth2.googleapis.com/token
+          scopes:
+            openid: OpenID Connect sign-in
+            profile: Access to basic profile info
+            email: Access to email address
 
   headers:
     CacheControl:
@@ -33,7 +45,7 @@ components:
       required:
         - id
         - name
-        - pictureId
+        - pictureUrl
         - description
         - category
         - entryDate
@@ -45,9 +57,10 @@ components:
         name:
           type: string
           example: Oak Tree
-        pictureId:
-          type: integer
-          example: 5821
+        pictureUrl:
+          type: string
+          format: uri
+          example: https://example.com/profile.jpg
         description:
           type: string
           example: Large deciduous tree commonly found in forests.
@@ -65,14 +78,15 @@ components:
       type: object
       required:
         - name
-        - pictureId
+        - pictureUrl
         - description
         - category
       properties:
         name:
           type: string
-        pictureId:
-          type: integer
+        pictureUrl:
+          type: string
+          format: uri
         description:
           type: string
         category:
@@ -83,8 +97,9 @@ components:
       properties:
         name:
           type: string
-        pictureId:
-          type: integer
+        pictureUrl:
+          type: string
+          format: uri
         description:
           type: string
         category:
@@ -93,19 +108,24 @@ components:
     category:
       type: string
       enum:
-        - PLANT
-        - ANIMAL
-        - OBJECT
-        - MINERAL
-        - FOOD
+        - pflanzen
+        - insekten
+        - tiere
+        - nahrung
+        - unbekannt
+        - technik
+        - mechanik
+        - gestein
+        - gegenstände
 
     user:
       type: object
       required:
         - id
         - name
-        - friends
-        - pictureURL
+        - email
+        - friendCode
+        - pictureUrl
       properties:
         id:
           type: integer
@@ -113,19 +133,58 @@ components:
         name:
           type: string
           example: Alice
-        friends:
-          type: array
-          description: Array of friend user IDs
-          items:
-            type: integer
-            example: 17
-          example:
-            - 17
-            - 23
-            - 91
-        pictureURL:
+        email:
           type: string
+          example: Alice@gmail.com
+        friendCode:
+          type: string
+          example: AA14E922
+        pictureUrl:
+          type: string
+          format: uri
           example: https://example.com/profile.jpg
+    
+    editUser:
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        name:
+          type: string
+          example: Alice
+        email:
+          type: string
+          example: Alice@gmail.com
+    
+    friend:
+      type: object
+      required:
+        - friendId
+        - name
+        - pictureUrl
+        - status
+      properties:
+        friendId:
+          type: integer
+          example: 42
+        name:
+          type: string
+          example: Alice
+        pictureUrl:
+          type: string
+          format: uri
+          example: https://example.com/profile.jpg
+        status:
+          $ref: "#/components/schemas/friendStatus"
+
+    friendStatus:
+      type: string
+      enum:
+        - PENDING
+        - ACCEPTED
+        - DECLINED
+
 
     recognitionAlternative:
       type: object
@@ -193,19 +252,7 @@ components:
           nullable: true
           example: PLANT
         category:
-          type: string
-          description: Final Omnidex category assigned by AI or fallback logic.
-          enum:
-            - Pflanze
-            - Insekten
-            - Tiere
-            - Nahrung
-            - Unbekannt
-            - Technik
-            - Mechanik
-            - Gestein
-            - Gegenstände
-          example: Pflanze
+          $ref: "#/components/schemas/category"
         alternatives:
           type: array
           items:
@@ -223,6 +270,7 @@ components:
           example: Oak
         source_url:
           type: string
+          format: uri
           nullable: true
           example: https://en.wikipedia.org/wiki/Oak
         image_reference:
@@ -254,24 +302,14 @@ components:
           description: German display label saved for the object card.
           example: Eidechse
         category:
-          type: string
-          nullable: true
-          enum:
-            - Pflanze
-            - Insekten
-            - Tiere
-            - Nahrung
-            - Unbekannt
-            - Technik
-            - Mechanik
-            - Gestein
-            - Gegenstände
+          $ref: "#/components/schemas/category"
         card_summary:
           type: string
           nullable: true
           description: German short summary shown on object cards, generated by AI or fallback.
         image_url:
           type: string
+          format: uri
           nullable: true
           example: http://127.0.0.1:5000/v1/image/cards/1/abc.jpeg
         created_at:
@@ -298,18 +336,7 @@ components:
           description: German display label saved for the object card.
           example: Eidechse
         category:
-          type: string
-          nullable: true
-          enum:
-            - Pflanze
-            - Insekten
-            - Tiere
-            - Nahrung
-            - Unbekannt
-            - Technik
-            - Mechanik
-            - Gestein
-            - Gegenstände
+          $ref: "#/components/schemas/category"
         confidence:
           type: number
           format: float
@@ -326,6 +353,7 @@ components:
           nullable: true
         source_url:
           type: string
+          format: uri
           nullable: true
         alternatives:
           type: array
@@ -333,6 +361,7 @@ components:
             $ref: "#/components/schemas/recognitionAlternative"
         image_url:
           type: string
+          format: uri
           nullable: true
         created_at:
           type: string
@@ -342,11 +371,11 @@ components:
     achievement:
       type: object
       required:
-          - id
-          - name
-          - required
-          - achievementReward
-          - icon
+        - id
+        - name
+        - required
+        - achievementReward
+        - icon
       properties:
         id:
           type: integer
@@ -358,7 +387,7 @@ components:
         required:
           type: integer
           nullable: false
-        achievementReward: 
+        achievementReward:
           type: integer
           example: 200
         icon:
@@ -370,9 +399,9 @@ components:
     achievementProgress:
       type: object
       required:
-          - id
-          - isDone
-          - currentProgress
+        - id
+        - isDone
+        - currentProgress
       properties:
         id:
           type: integer
@@ -391,7 +420,7 @@ security:
   - bearerAuth: [ ]
 
 paths:
-  /v1/users/create:
+  /v1/users:
     post:
       summary: Create a new user
       description: Creates a new user with a username, email and password.
@@ -445,8 +474,31 @@ paths:
                   message:
                     type: string
                     example: User already exists
+    patch:
+      summary: Edit current user profile
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/user"
+      responses:
+        "200":
+          description: User updated successfully
+        "401":
+          description: Unauthorized. You are not logged in.
+        "403":
+          description: Forbidden. You are not said user or lack the permission to edit.
+        "409":
+          description: Conflict (e.g. duplicate username)
+        "422":
+          description: Validation failed
+        "500":
+          description: Internal server error
 
-  /v1/users/login:
+  /v1/users/auth:
     post:
       summary: Login user
       description: Authenticates a local user or refreshes an existing session and returns access plus refresh tokens.
@@ -511,53 +563,8 @@ paths:
                   message:
                     type: string
                     example: Invalid credentials
-  /api/users/{user_id}:
-    get:
-      summary: Get user by ID
-      description: Returns a user by their numeric ID.
-      tags:
-        - Users
-      security: [ ]
 
-      parameters:
-        - name: user_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: ID of the user
-
-      responses:
-        "200":
-          description: User found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  user:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                      name:
-                        type: string
-                      email:
-                        type: string
-                      friendcode:
-                        type: string
-
-        "404":
-          description: User not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: User not found
-  /v1/users/google/login:
+  /v1/users/google/auth:
     get:
       summary: Redirect to Google OAuth
       description: Redirects user to Google login page.
@@ -639,7 +646,7 @@ paths:
       description: Returns a public Wikipedia extract and supports HTTP caching with Cache-Control, ETag and 304 revalidation.
       tags:
         - Wiki
-      security: [ ]
+
       parameters:
         - in: path
           name: title
@@ -696,30 +703,13 @@ paths:
                     type: string
                     example: Article not found
 
-  /v1/scan/login_test:
-    get:
-      summary: "Login test"
-      description: "Responds with the user name"
-      tags:
-        - Login
-      responses:
-        "200":
-          description: "User was authenticated"
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Hallo alice"
-
-  /v1/scan:
+  /v1/scans:
     post:
       summary: Create scan result from image
       description: Recognizes the uploaded image and enriches it with Wikipedia information.
       tags:
         - Scan
+
       requestBody:
         required: true
         content:
@@ -752,69 +742,13 @@ paths:
         "503":
           description: Recognition service unavailable
 
-  /v1/scan/recognize:
-    post:
-      summary: Recognize object from image via LISA
-      description: Sends image data to recognition provider and returns normalized recognition result.
-      tags:
-        - Scan
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - image
-              properties:
-                image:
-                  type: string
-                  description: Base64-encoded image. Data URL format is also accepted.
-                  example: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD..."
-      responses:
-        "200":
-          description: Recognition succeeded
-          headers:
-            Cache-Control:
-              $ref: "#/components/headers/CacheControl"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/recognitionResult"
-        "400":
-          description: Invalid request payload
-        "422":
-          description: Low confidence result
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: Low confidence recognition result.
-                  label:
-                    type: string
-                    example: cat
-                  confidence:
-                    type: number
-                    format: float
-                    example: 0.41
-                  minimum_confidence:
-                    type: number
-                    format: float
-                    example: 0.90
-        "502":
-          description: Invalid provider response
-        "503":
-          description: Recognition service unavailable
-
-  /v1/users/set_profile_picture:
+  /v1/users/profile-pictures:
     post:
       summary: Set user profile picture
       description: Uploads and sets the profile picture for the authenticated user.
       tags:
         - Users
+
 
       requestBody:
         required: true
@@ -851,16 +785,16 @@ paths:
         "401":
           description: Unauthorized
 
-  /v1/users/get_profile_picture/{user_id}:
+  /v1/users/profile-pictures/{userId}:
     get:
       summary: Get user profile picture URL
       description: Returns a temporary URL to access the user's profile picture.
       tags:
         - Users
-      security: [ ]
+
 
       parameters:
-        - name: user_id
+        - name: userId
           in: path
           required: true
           schema:
@@ -878,6 +812,7 @@ paths:
                 properties:
                   url:
                     type: string
+                    format: uri
                     example: https://example.com/image.jpg
 
         "400":
@@ -886,10 +821,10 @@ paths:
         "404":
           description: User or profile picture not found
 
-  /v1/image/{key}:
+  /v1/images/{key}:
     get:
       summary: Get image by key
-      security: [ ]
+
       parameters:
         - in: path
           name: key
@@ -924,11 +859,12 @@ paths:
             ETag:
               $ref: "#/components/headers/ETag"
 
-  /v1/collections/me:
+  /v1/collections:
     get:
       summary: List the authenticated user's saved collection entries
       tags:
         - Collection
+
       parameters:
         - in: query
           name: query
@@ -941,24 +877,14 @@ paths:
           required: false
           schema:
             type: string
-            enum: [newest, oldest, alphabetical]
+            enum: [ newest, oldest, alphabetical ]
             default: newest
           description: Sort order by scan creation time or object label.
         - in: query
           name: category
           required: false
           schema:
-            type: string
-            enum:
-              - Pflanze
-              - Insekten
-              - Tiere
-              - Nahrung
-              - Unbekannt
-              - Technik
-              - Mechanik
-              - Gestein
-              - Gegenstände
+            $ref: "#/components/schemas/category"
           description: Filter by the already stored category value.
         - in: query
           name: limit
@@ -1020,11 +946,12 @@ paths:
             Vary:
               $ref: "#/components/headers/Vary"
 
-  /v1/collections/me/{entryId}:
+  /v1/collections/{entryId}:
     get:
       summary: Get details of a single collection entry owned by the authenticated user
       tags:
         - Collection
+
       parameters:
         - in: path
           name: entryId
@@ -1073,11 +1000,40 @@ paths:
                   error:
                     type: string
 
-  /v1/collections/me/{entryId}/category:
+    delete:
+      summary: Delete a collection entry owned by the authenticated user
+      tags:
+        - Collection
+
+      parameters:
+        - in: path
+          name: entryId
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - in: header
+          name: If-Match
+          required: false
+          schema:
+            type: string
+          description: Optional ETag for optimistic concurrency control
+      responses:
+        "204":
+          description: Collection entry deleted successfully
+        "401":
+          description: Unauthorized
+        "404":
+          description: Collection entry not found
+        "412":
+          description: ETag mismatch (stale resource)
+
+  /v1/collections/{entryId}/categories:
     patch:
       summary: Update the category of one collection entry owned by the authenticated user
       tags:
         - Collection
+
       parameters:
         - in: path
           name: entryId
@@ -1101,18 +1057,7 @@ paths:
                 - category
               properties:
                 category:
-                  type: string
-                  enum:
-                    - Pflanze
-                    - Insekten
-                    - Tiere
-                    - Nahrung
-                    - Unbekannt
-                    - Technik
-                    - Mechanik
-                    - Gestein
-                    - Gegenstände
-                  example: Tiere
+                  $ref: "#/components/schemas/category"
       responses:
         "200":
           description: Collection entry category updated.
@@ -1149,212 +1094,13 @@ paths:
             Cache-Control:
               $ref: "#/components/headers/CacheControl"
 
-  # Nia changes start!!
-
-  /v1/entries/{entryId}:
-    get:
-      summary: Retrieve a single entry by entryId
-      tags:
-        - Entries
-      parameters:
-        - name: entryId
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Entry successfully retrieved
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/entry"
-        "400":
-          description: Invalid entry ID
-        "404":
-          description: Entry not found
-        "500":
-          description: Internal server error
-
-    delete:
-      summary: Delete an entry per entryId
-      tags:
-        - Entries
-      parameters:
-        - name: entryId
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "204":
-          description: Entry successfully deleted
-        "400":
-          description: Invalid request
-        "401":
-          description: Unauthorized. Please log in
-        "403":
-          description: Forbidden. This entry is not yours
-        "404":
-          description: Entry not found
-        "500":
-          description: Internal server error
-
-    put:
-      summary: Update an existing entry per entryId
-      tags:
-        - Entries
-      parameters:
-        - name: entryId
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/entryUpdate"
-      responses:
-        "200":
-          description: Entry successfully updated
-        "400":
-          description: Invalid request
-        "401":
-          description: Unauthorized. Please log in
-        "403":
-          description: Forbidden. This entry is not yours
-        "404":
-          description: Entry not found
-        "409":
-          description: Update conflict
-        "422":
-          description: Unable to process update.
-        "500":
-          description: Internal server error
-
-
-  /v1/entries/categories/{categoryId}:
-    get:
-      summary: Retrieve all entrys of said category by categoryId
-      tags:
-        - Entries
-      parameters:
-        - name: categoryId
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Category successfully retrieved
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/entry"
-        "400":
-          description: Invalid request
-        "404":
-          description: No categories found
-        "500":
-          description: Internal server error
-
-
-  /v1/entries:
-    post:
-      summary: Create a new entry
-      tags:
-        - Entries
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/entry"
-      responses:
-        "201":
-          description: Entry successfully created
-        "400":
-          description: Invalid request
-        "401":
-          description: Unauthorized
-        "422":
-          description: Cannot process data.
-        "500":
-          description: Internal server error
-
-
-  /v1/entries/{userId}/entries:
-    get:
-      summary: Retrieve all entries discovered by a user by userId
-      tags:
-        - Entries
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: User entries successfully retrieved
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/entry"
-        "403":
-          description: Forbidden. You do not have access to this user.
-        "404":
-          description: User or entries not found
-        "500":
-          description: Internal server error
-
-
-  /v1/entries/{userId}/categories/{categoryId}:
-    get:
-      summary: Retrieve user entries filtered by category
-      tags:
-        - Entries
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: integer
-        - name: categoryId
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Filtered entries successfully retrieved
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/entry"
-        "400":
-          description: Invalid parameters
-        "404":
-          description: User or category not found
-        "500":
-          description: Internal server error
-
-  # And now.. more changes meow...
 
   /v1/users/{userId}:
-
     get:
       summary: Retrieve a user by userId
       tags:
         - Users
+
       parameters:
         - name: userId
           in: path
@@ -1380,6 +1126,7 @@ paths:
       summary: Delete a user by userId
       tags:
         - Users
+
       parameters:
         - name: userId
           in: path
@@ -1402,13 +1149,14 @@ paths:
 
 
 
-  /v1/friends/requests/send/{friend_code}:
+  /v1/friends/requests/{friendCode}:
     post:
       summary: Send friend request
       tags:
         - Friends
+
       parameters:
-        - name: friend_code
+        - name: friendCode
           in: path
           required: true
           schema:
@@ -1416,48 +1164,83 @@ paths:
       responses:
         "201":
           description: Friend request sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Friend request sent successfully
         "400":
           description: Could not send friend request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: Invalid friend code or request already exists
 
-  /v1/friends/requests/accept/{sender_id}:
-    post:
+  /v1/friends/requests/{senderId}:
+    patch:
       summary: Accept friend request
       tags:
         - Friends
+
       parameters:
-        - name: sender_id
+        - name: senderId
           in: path
           required: true
           schema:
             type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/friendStatus"
       responses:
         "200":
           description: Friend request accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Friend request accepted
         "400":
           description: Could not accept request
-
-  /v1/friends/requests/decline/{sender_id}:
-    post:
-      summary: Decline friend request
-      tags:
-        - Friends
-      parameters:
-        - name: sender_id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Friend request declined
-        "400":
-          description: Could not decline request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: Request already handled or does not exist
 
   /v1/friends/requests:
     get:
       summary: Get incoming friend requests
       tags:
         - Friends
+
       responses:
         "200":
           description: Incoming friend requests retrieved
@@ -1471,18 +1254,14 @@ paths:
                   requests:
                     type: array
                     items:
-                      type: object
-                      properties:
-                        sender_id:
-                          type: integer
-                        status:
-                          type: string
+                      $ref: "#/components/schemas/friend"
 
   /v1/friends/{user_id}:
     delete:
       summary: Remove friend
       tags:
         - Friends
+
       parameters:
         - name: user_id
           in: path
@@ -1492,14 +1271,37 @@ paths:
       responses:
         "200":
           description: Friend removed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Friend removed successfully
         "400":
           description: Could not remove friend
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: User is not in friend list
 
   /v1/friends:
     get:
       summary: Get friend list
       tags:
         - Friends
+
       responses:
         "200":
           description: Friend list retrieved
@@ -1513,12 +1315,30 @@ paths:
                   friends:
                     type: array
                     items:
-                      type: object
-                      properties:
-                        friend_id:
-                          type: integer
-                        status:
-                          type: string
+                      $ref: "#/components/schemas/friend"
+
+  /v1/friends/feed:
+    get:
+      summary: Get friends feed
+      description: Returns the most recent entries discovered by the user's friends.
+      tags:
+        - Friends
+
+      responses:
+        "200":
+          description: Friends feed retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  feed:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/entry"
 
 
   /v1/achievements:
@@ -1526,6 +1346,7 @@ paths:
       summary: Retrieve all achievements
       tags:
         - Achievements
+
       responses:
         "200":
           description: Achievements retrieved successfully
@@ -1540,17 +1361,13 @@ paths:
         "500":
           description: Internal server error
 
-  /v1/achievements/progress/{userId}:
+  /v1/achievements/progress:
     get:
       summary: Get user progress
       tags:
         - Achievements
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: integer
+
+
       responses:
         "200":
           description: Progress retrieved successfully
@@ -1569,12 +1386,6 @@ paths:
       summary: Edit User achievement progress
       tags:
         - Achievements
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: integer
       requestBody:
         required: true
         content:
@@ -1582,7 +1393,7 @@ paths:
             schema:
               type: array
               items:
-                $ref: "#/components/schemas/achievementProgress"   
+                $ref: "#/components/schemas/achievementProgress"
       responses:
         "200":
           description: Progress edited successfully
@@ -1600,30 +1411,7 @@ paths:
 
 
 
-  /v1/users/edit:
-    put:
-      summary: Edit current user profile
-      tags:
-        - Users
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/user"
-      responses:
-        "200":
-          description: User updated successfully
-        "401":
-          description: Unauthorized. You are not logged in.
-        "403":
-          description: Forbidden. You are not said user or lack the permission to edit.
-        "409":
-          description: Conflict (e.g. duplicate username)
-        "422":
-          description: Validation failed
-        "500":
-          description: Internal server error
+
 
 
 
@@ -1632,6 +1420,7 @@ paths:
       summary: Retrieve user experience
       tags:
         - Users
+
       parameters:
         - name: userId
           in: path

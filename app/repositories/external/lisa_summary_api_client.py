@@ -48,7 +48,7 @@ class LisaSummaryApiClient(LisaSummaryAdapterProtocol):
             )
         except requests.RequestException as exc:
             raise SummaryUnavailable("LISA summary request failed") from exc
-
+        print("LISA: Step 3 done")
         body = self._read_json_response(response)
         content = self._extract_assistant_content(body)
         if isinstance(content, str) and content.strip():

@@ -23,7 +23,7 @@ class SqlCardRepo(CardRepoProtocol):
             name=name,
             image_key=image_key,
             card_summary=card_summary,
-            category=category,
+            category=category.lower() if category else None,
             confidence=confidence,
             description=description,
             source_title=source_title,
@@ -42,6 +42,15 @@ class SqlCardRepo(CardRepoProtocol):
             .first()
             is not None
         )
+
+    def get_cards_by_friends(self, user_ids: list[int]):
+        return (
+            db.session.query(CardModel)
+            .filter(CardModel.user_id.in_(user_ids))
+            .order_by(CardModel.created_at.desc())
+            .all()
+        )
+
     def count_cards(self, user_id: int) -> int:
         return (
             db.session.query(CardModel).filter(CardModel.user_id == user_id).count()

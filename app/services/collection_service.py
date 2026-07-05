@@ -16,15 +16,15 @@ from app.services.collection_errors import (
 class CollectionService:
     ALLOWED_SORTS = {"newest", "oldest", "alphabetical"}
     ALLOWED_CATEGORIES = {
-        "Pflanze",
-        "Insekten",
-        "Tiere",
-        "Nahrung",
-        "Unbekannt",
-        "Technik",
-        "Mechanik",
-        "Gestein",
-        "Gegenstände",
+        "pflanzen",
+        "insekten",
+        "tiere",
+        "nahrung",
+        "unbekannt",
+        "technik",
+        "mechanik",
+        "gestein",
+        "gegenstände",
     }
 
     def __init__(self, collection_repo: CollectionRepoProtocol, base_url: str):
@@ -66,6 +66,20 @@ class CollectionService:
             )
             for card in cards
         ]
+    
+    def delete_collection_entry(self, user_id: int, entry_id: int) -> None:
+        self._validate_user(user_id)
+
+        if entry_id <= 0:
+            raise CollectionEntryNotFound()
+
+        deleted = self.collection_repo.delete_for_user(
+            user_id=user_id,
+            entry_id=entry_id,
+        )
+
+        if not deleted:
+            raise CollectionEntryNotFound()
 
     def get_collection_entry_detail(self, user_id: int, entry_id: int) -> CollectionEntryDetailDto:
         self._validate_user(user_id)
@@ -88,6 +102,7 @@ class CollectionService:
         if entry_id <= 0:
             raise CollectionEntryNotFound()
         self._validate_category(category)
+        print(category)
 
         card = self.collection_repo.update_category_for_user(
             user_id=user_id,
@@ -167,4 +182,4 @@ class CollectionService:
             return None
         if image_key.startswith("http://") or image_key.startswith("https://"):
             return image_key
-        return f"{self.base_url}/api/image/{image_key.lstrip('/')}"
+        return f"{self.base_url}/v1/images/{image_key.lstrip('/')}"

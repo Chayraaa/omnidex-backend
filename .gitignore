@@ -27,3 +27,4 @@ secrets/
 test-images/
 local-images/
 .env
+/.env

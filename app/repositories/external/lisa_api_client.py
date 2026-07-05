@@ -92,7 +92,7 @@ class LisaApiClient(LisaAdapterProtocol):
             )
         except requests.RequestException as exc:
             raise RecognitionUnavailable("LISA completion request failed") from exc
-
+        print("LISA: Step 1 done")
         return self._read_json_response(response, "LISA completion")
 
     def _read_json_response(self, response: requests.Response, operation: str) -> Any:

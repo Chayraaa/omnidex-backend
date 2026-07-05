@@ -15,13 +15,15 @@ achievement_service = AchievementService(
 
 @achievements.route("", methods=["GET"])
 def get_achievements():
-    achievements = achievement_service.get_all_achievements()
-    return jsonify({"achievements": [a.__dict__ for a in achievements]}), 200
+    results = achievement_service.get_all_achievements()
+    return jsonify([a.__dict__ for a in results]), 200
+
 
 @achievements.route("/progress", methods=["GET"])
 @login_required
 def get_achievement_progress(user):
     if user is None:
         return jsonify({"error": "User not found"}), 404
+
     results = achievement_service.get_current_progress(user)
-    return jsonify({"achievement progress": [r.__dict__ for r in results]}), 200
+    return jsonify([r.__dict__ for r in results]), 200

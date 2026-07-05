@@ -15,7 +15,7 @@ def base64_to_binary_io(data_url: str):
 
 
 class ImageService:
-    def __init__(self, storage: ImageStorageProtocol, image_repo: ImageRepoProtocol, base_url: str = "http://127.0.0.1:5000", image_path: str = "api/image"):
+    def __init__(self, storage: ImageStorageProtocol, image_repo: ImageRepoProtocol, base_url: str = "http://127.0.0.1:5000", image_path: str = "v1/imags"):
         self.storage = storage
         self.image_repo = image_repo
         self.base_url = base_url.rstrip("/")

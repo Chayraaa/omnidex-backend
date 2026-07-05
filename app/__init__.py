@@ -4,13 +4,14 @@ from functools import wraps
 
 import yaml
 from authlib.integrations.flask_client import OAuth
-from flask import Flask, request, jsonify, current_app
+from flask import Flask, request, current_app
 from openapi_core.contrib.flask import FlaskOpenAPIRequest
 from openapi_core.exceptions import OpenAPIError
 from openapi_core.validation.request.exceptions import InvalidRequestBody
 from openapi_core.validation.schemas.exceptions import InvalidSchemaValue
 from sqlalchemy import inspect
 from sqlalchemy import text
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app.repositories.units_of_work.sql_unit import SqlUnitOfWork
 from app.services.auth_service import AuthService
@@ -32,10 +33,9 @@ from app.services.friends_service import FriendsService
 from app.repositories.external.lisa_category_api_client import LisaCategoryApiClient
 from app.extensions import db
 from openapi_core import OpenAPI
-from app.services.notification_service import NotificationService
-from app.repositories.storage.sql_notification_repo import SqlNotificationRepo
 from app.services.achievement_service import AchievementService
 from app.services.wiki_service import WikiService
+from app.http_cache import json_no_store
 
 # Add all the db database_models here
 from app.database_models.user_model import UserModel
@@ -132,10 +132,6 @@ def setup_services(app: Flask):
     app.auth_service = AuthService(storage_unit_of_work.user_repo, storage_unit_of_work.refresh_token_repo)
     app.image_service = ImageService(storage_unit_of_work.image_storage, storage_unit_of_work.image_repo,
                                      base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"))
-    app.google_oauth_service = GoogleOauthService(
-        storage_unit_of_work.user_repo,
-        storage_unit_of_work.refresh_token_repo,
-    )
     app.wiki_service = WikiService(WikiRepo())
     lisa_adapter = LisaApiClient()
     lisa_summary_adapter = LisaSummaryApiClient()
@@ -161,7 +157,14 @@ def setup_services(app: Flask):
         base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"),
     )
     app.google_oauth_service = GoogleOauthService(storage_unit_of_work.user_repo,
-                                                  storage_unit_of_work.refresh_token_repo)
+                                                  storage_unit_of_work.refresh_token_repo,
+                                                  app.achievement_service)
+    app.friends_service = FriendsService(
+        storage_unit_of_work.friends_repo,
+        storage_unit_of_work.user_repo,
+        storage_unit_of_work.card_repo,
+        base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000")
+    )
 
 
 # Add all the routes here (see health as example)
@@ -171,19 +174,17 @@ def setup_routes(app: Flask):
     from .routes.user import users
     app.register_blueprint(users, url_prefix="/v1/users")
     from .routes.scan import scan
-    app.register_blueprint(scan, url_prefix="/v1/scan")
+    app.register_blueprint(scan, url_prefix="/v1/scans")
     from .routes.image import image
-    app.register_blueprint(image, url_prefix="/v1/image")
+    app.register_blueprint(image, url_prefix="/v1/images")
     from .routes.wiki import wiki
     app.register_blueprint(wiki, url_prefix="/v1/wiki")
     from .routes.collection import collection
-    app.register_blueprint(collection, url_prefix="/v1/collection")
+    app.register_blueprint(collection, url_prefix="/v1/collections")
     from .routes.achievement import achievements
     app.register_blueprint(achievements, url_prefix="/v1/achievements")
     from .routes.friends import friends
     app.register_blueprint(friends, url_prefix="/v1/friends")
-    from .routes.notifications import notifications
-    app.register_blueprint(notifications, url_prefix="/v1/notifications")
 
 
 ########################
@@ -196,25 +197,24 @@ def login_required(f):
 
         # Get the token from the Authorization header
         token = request.headers.get("Authorization")
-        print(request.headers)
         if not token:
-            return jsonify({"error": "Token missing"}), 401
+            return json_no_store({"error": "Token missing"}, 401)
 
         # Check if the token is in the correct format
         parts = token.split()
         if len(parts) != 2 or parts[0].lower() != "bearer":
-            return jsonify({"error": "Invalid Authorization header"}), 401
+            return json_no_store({"error": "Invalid Authorization header"}, 401)
 
         # Parsing and verification of the token
         token = parts[1]
         user_id = PasswordService.verify_token(token)
         if not user_id:
-            return jsonify({"error": "Invalid or expired token"}), 401
+            return json_no_store({"error": "Invalid or expired token"}, 401)
 
         # Query the user from the database
         user = current_app.user_service.get_user(user_id)
         if not user:
-            return jsonify({"error": "User not found"}), 401
+            return json_no_store({"error": "User not found"}, 401)
 
         # Return the user object to the route handler
         return f(user=user, *args, **kwargs)
@@ -237,15 +237,15 @@ def validate(f):
                 errors = [err.message for err in e.__cause__.schema_errors]
             else:
                 errors = [str(e.__cause__)]
-            return jsonify({
+            return json_no_store({
                 "error": "Request body validation failed",
                 "fields": errors
-            }), 400
+            }, 400)
         except OpenAPIError as e:
-            return jsonify({
+            return json_no_store({
                 "error": "Request validation failed",
                 "details": str(e)
-            }), 400
+            }, 400)
 
         return f(*args, **kwargs)
 
@@ -268,6 +268,8 @@ def open_api_page(app):
 # Here everything for app creation is inited.
 def create_app():
     app = Flask(__name__)
+
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
     setup_logging(app)
     setup_openapi(app)

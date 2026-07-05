@@ -19,11 +19,11 @@ def get_wikipedia_summary(title):
             {"error": "Article not found"},
             cache_control=PUBLIC_NEGATIVE_CACHE,
             status=404,
-            vary="Accept",
+            vary="Accept-Encoding",
         )
 
     return json_response_with_etag(
         {"extract": summary},
         cache_control=PUBLIC_WIKI_CACHE,
-        vary="Accept",
+        vary="Accept-Encoding",
     )

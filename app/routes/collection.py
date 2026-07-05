@@ -17,10 +17,10 @@ from app.services.collection_errors import (
     InvalidCollectionPagination,
 )
 
-collection = Blueprint("collection", __name__)
+collection = Blueprint("collections", __name__)
 
 
-@collection.route("/me", methods=["GET"])
+@collection.route("", methods=["GET"])
 @login_required
 @validate
 def get_my_collection(user: User):
@@ -60,7 +60,7 @@ def get_my_collection(user: User):
     )
 
 
-@collection.route("/me/<int:entryId>", methods=["GET"])
+@collection.route("/<int:entryId>", methods=["GET"])
 @login_required
 @validate
 def get_collection_entry_detail(user: User, entryId: int):
@@ -78,13 +78,38 @@ def get_collection_entry_detail(user: User, entryId: int):
         vary="Authorization",
     )
 
+@collection.route("/<int:entryId>", methods=["DELETE"])
+@login_required
+@validate
+def delete_collection_entry(user: User, entryId: int):
+    try:
+        if request.headers.get("If-Match"):
+            current_entry = current_app.collection_service.get_collection_entry_detail(
+                user_id=user.id,
+                entry_id=entryId,
+            )
 
-@collection.route("/me/<int:entryId>/category", methods=["PATCH"])
+            if not if_match_satisfied(make_json_etag(current_entry.to_detail_dict())):
+                return precondition_failed_response()
+
+        current_app.collection_service.delete_collection_entry(
+            user_id=user.id,
+            entry_id=entryId,
+        )
+
+    except CollectionEntryNotFound:
+        return json_no_store({"error": "Collection entry not found"}, 404)
+
+    return ("", 204)
+
+
+@collection.route("/<int:entryId>/categories", methods=["PATCH"])
 @login_required
 @validate
 def update_collection_entry_category(user: User, entryId: int):
     data = request.get_json() or {}
     category = data.get("category")
+    print(data)
 
     try:
         if request.headers.get("If-Match"):
