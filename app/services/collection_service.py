@@ -16,7 +16,7 @@ from app.services.collection_errors import (
 class CollectionService:
     ALLOWED_SORTS = {"newest", "oldest", "alphabetical"}
     ALLOWED_CATEGORIES = {
-        "Pflanzen",
+        "Pflanze",
         "Insekten",
         "Tiere",
         "Nahrung",

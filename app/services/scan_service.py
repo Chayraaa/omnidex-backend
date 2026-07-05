@@ -17,6 +17,7 @@ from app.services.summary_errors import SummaryError
 from app.services.summary_service import SummaryService
 from app.services.scan_errors import ScanCreationFailed
 from app.services.category_service import CategoryService
+from app.services.label_translation_service import LabelTranslationService
 
 
 class ScanService:
@@ -31,6 +32,7 @@ class ScanService:
         card_repo,
         base_url: str,
         category_service=None,
+        label_translation_service=None,
         achievement_service=None,
     ):
         self.recognition_service = recognition_service
@@ -40,6 +42,7 @@ class ScanService:
         self.card_repo = card_repo
         self.base_url = base_url.rstrip("/")
         self.category_service = category_service or CategoryService()
+        self.label_translation_service = label_translation_service or LabelTranslationService()
         self.achievement_service = achievement_service
 
     def create_scan(self, user_id: int, image_input: bytes) -> ScanResultDto:
@@ -56,27 +59,29 @@ class ScanService:
             wiki_text=description,
         )
         card_summary, summary_generated_by_ai = self._get_card_summary(recognition_result.label, description)
+        display_label = self._get_display_label(recognition_result.label)
 
         card_id, image_reference, created_at = self._persist_card(
             user_id=user_id,
-            recognition_label=recognition_result.label,
+            card_label=display_label,
             card_summary=card_summary,
             image_bytes=image_input,
             confidence=recognition_result.confidence,
             description=description,
             source_title=recognition_result.label if knowledge_enriched else None,
             source_url=self._build_wikipedia_url(recognition_result.label) if knowledge_enriched else None,
-            category=category_assignment.category.lower(),
+            category=category_assignment.category,
             alternatives=[
                 {"label": alternative.label, "confidence": alternative.confidence}
                 for alternative in recognition_result.alternatives
             ],
         )
 
-        self.achievement_service.process_card_created(user_id)
+        if self.achievement_service is not None:
+            self.achievement_service.process_card_created(user_id)
 
         return ScanResultDto(
-            label=recognition_result.label,
+            label=display_label,
             confidence=recognition_result.confidence,
             category_hint=recognition_result.category_hint,
             category=category_assignment.category,
@@ -147,6 +152,17 @@ class ScanService:
             return self._fallback_card_summary(description), False
         return SummaryService.trim_summary(summary.strip()), True
 
+    def _get_display_label(self, recognition_label: str) -> str:
+        try:
+            translated = self.label_translation_service.translate_label_to_german(recognition_label)
+        except Exception:
+            translated = None
+        if isinstance(translated, str) and translated.strip():
+            return translated.strip()
+        if isinstance(recognition_label, str) and recognition_label.strip():
+            return recognition_label.strip()
+        return "unknown"
+
     def _fallback_card_summary(self, description: str) -> str:
         if not isinstance(description, str) or not description.strip():
             return self.FALLBACK_CARD_SUMMARY
@@ -159,7 +175,7 @@ class ScanService:
         self,
         *,
         user_id: int,
-        recognition_label: str,
+        card_label: str,
         card_summary: str,
         image_bytes: bytes,
         confidence: float,
@@ -178,7 +194,7 @@ class ScanService:
 
             name = self._unique_card_name(
                 user_id,
-                recognition_label.strip() if isinstance(recognition_label, str) else "unknown",
+                card_label.strip() if isinstance(card_label, str) else "unknown",
             )
             card_id, created_at = self.card_repo.create_card(
                 user_id=user_id,
