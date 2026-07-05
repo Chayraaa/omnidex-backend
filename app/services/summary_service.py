@@ -43,12 +43,12 @@ class SummaryService:
 
         prompt = (
             f"Erstelle eine kurze Beschreibung von '{cleaned_label}' für eine mobile Objektkarte, "
-            "auf Deutsch, maximal zwei kurze Sätze. Bleibe sachlich, einfach und nutzerfreundlich.\n\n"
-            f"Prüfe zuerst, ob der folgende Text tatsächlich zu '{cleaned_label}' passt.\n"
-            "- Falls ja: Fasse ausschließlich Fakten aus dem Text zusammen. Füge keine neuen Informationen hinzu.\n"
+            "auf Deutsch, maximal zwei kurze Sätze. Bleibe sachlich.\n\n"
+            f"Prüfe zuerst, ob der folgende Text thematisch zu '{cleaned_label}' passt.\n"
+            "- Falls ja: Fasse ausschließlich Fakten aus dem Text auf die geforderte länge zusammen. Füge keine neuen Informationen hinzu.\n"
             f"- Falls nein: Ignoriere den Text, beschreibe '{cleaned_label}' stattdessen anhand deines eigenen "
-            f"Allgemeinwissens und füge am Ende der Antwort genau '{KI_KNOWLEDGE_TAG}' in Klammern an.\n\n"
-            "Gib nur die fertige Beschreibung zurück, ohne weitere Erklärungen.\n\n"
+            f"Allgemeinwissens sachlich und objektiv im Stil von Wikipedia. Füge am Ende der Antwort genau '{KI_KNOWLEDGE_TAG}' in Klammern an.\n\n"
+            "Gib nur die fertige Beschreibung zurück, ohne weitere Erklärungen oder Kommentare.\n\n"
             f"Informationen:\n{cleaned_text}"
         )
 
