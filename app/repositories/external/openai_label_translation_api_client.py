@@ -10,7 +10,7 @@ from app.services.label_translation_errors import (
 )
 
 
-class LisaLabelTranslationApiClient(LabelTranslationAdapterProtocol):
+class OpenAILabelTranslationApiClient(LabelTranslationAdapterProtocol):
     def __init__(
         self,
         base_url: str | None = None,
@@ -18,27 +18,27 @@ class LisaLabelTranslationApiClient(LabelTranslationAdapterProtocol):
         timeout_seconds: float | None = None,
         model: str | None = None,
     ):
-        self.base_url = (base_url or os.environ.get("LISA_BASE_URL", "")).strip().rstrip("/")
-        self.api_key = (api_key or os.environ.get("LISA_API_KEY", "")).strip()
+        self.base_url = (base_url or os.environ.get("AI_BASE_URL", "")).strip().rstrip("/")
+        self.api_key = (api_key or os.environ.get("AI_API_KEY", "")).strip()
         self.model = (
             model
             or os.environ.get(
-                "LISA_LABEL_TRANSLATION_MODEL",
-                os.environ.get("LISA_SUMMARY_MODEL", os.environ.get("LISA_MODEL", "lisa-vision")),
+                "AI_LABEL_TRANSLATION_MODEL",
+                os.environ.get("AI_SUMMARY_MODEL", os.environ.get("AI_MODEL", "gpt-4o-mini")),
             )
         ).strip()
         timeout_raw = timeout_seconds
         if timeout_raw is None:
             timeout_raw = os.environ.get(
-                "LISA_LABEL_TRANSLATION_TIMEOUT_SECONDS",
-                os.environ.get("LISA_SUMMARY_TIMEOUT_SECONDS", os.environ.get("LISA_TIMEOUT_SECONDS", "10")),
+                "AI_LABEL_TRANSLATION_TIMEOUT_SECONDS",
+                os.environ.get("AI_SUMMARY_TIMEOUT_SECONDS", os.environ.get("AI_TIMEOUT_SECONDS", "10")),
             )
         self.timeout_seconds = float(timeout_raw)
 
         if not self.base_url:
-            raise ValueError("LISA_BASE_URL environment variable is required")
+            raise ValueError("AI_BASE_URL environment variable is required")
         if not self.api_key:
-            raise ValueError("LISA_API_KEY environment variable is required")
+            raise ValueError("AI_API_KEY environment variable is required")
 
     def translate_label(self, prompt: str) -> str:
         if not isinstance(prompt, str) or not prompt.strip():
@@ -54,31 +54,40 @@ class LisaLabelTranslationApiClient(LabelTranslationAdapterProtocol):
 
         try:
             response = requests.post(
-                f"{self.base_url}/api/chat/completions",
+                f"{self.base_url}/v1/chat/completions",
                 headers={**self._auth_headers(), "Content-Type": "application/json"},
                 json=payload,
                 timeout=self.timeout_seconds,
             )
         except requests.RequestException as exc:
-            raise LabelTranslationUnavailable("LISA label translation request failed") from exc
+            print(f"DEBUG: OpenAI label translation request failed: {exc}")
+            raise LabelTranslationUnavailable("OpenAI label translation request failed") from exc
 
         body = self._read_json_response(response)
         content = self._extract_assistant_content(body)
         if isinstance(content, str) and content.strip():
             return content.strip()
-        raise InvalidLabelTranslationResponse("LISA label translation response did not include assistant content")
+        raise InvalidLabelTranslationResponse("OpenAI label translation response did not include assistant content")
 
     def _read_json_response(self, response: requests.Response) -> Any:
+        if response.status_code >= 400:
+            print(f"DEBUG: OpenAI label translation failed with status {response.status_code}")
+            print(f"DEBUG: Response body: {response.text}")
+        else:
+            print(f"DEBUG: OpenAI label translation successful with status {response.status_code}")
+            print(f"DEBUG: Response body: {response.text}")
+
         if response.status_code >= 500:
-            raise LabelTranslationUnavailable(f"LISA label translation returned server error: {response.status_code}")
+            raise LabelTranslationUnavailable(f"OpenAI label translation returned server error: {response.status_code}")
         if response.status_code >= 400:
             raise InvalidLabelTranslationResponse(
-                f"LISA label translation rejected request: HTTP {response.status_code}"
+                f"OpenAI label translation rejected request: HTTP {response.status_code}"
             )
         try:
             return response.json()
         except ValueError as exc:
-            raise InvalidLabelTranslationResponse("LISA label translation returned non-JSON response") from exc
+            print(f"DEBUG: OpenAI label translation returned non-JSON response: {response.text}")
+            raise InvalidLabelTranslationResponse("OpenAI label translation returned non-JSON response") from exc
 
     def _auth_headers(self) -> dict[str, str]:
         token = self.api_key

@@ -13,7 +13,7 @@ from app.services.category_errors import (
 )
 
 
-class LisaCategoryApiClient(CategoryAssignmentAdapterProtocol):
+class OpenAICategoryApiClient(CategoryAssignmentAdapterProtocol):
     def __init__(
         self,
         base_url: str | None = None,
@@ -21,22 +21,22 @@ class LisaCategoryApiClient(CategoryAssignmentAdapterProtocol):
         timeout_seconds: float | None = None,
         model: str | None = None,
     ):
-        self.base_url = (base_url or os.environ.get("LISA_BASE_URL", "")).strip().rstrip("/")
-        self.api_key = (api_key or os.environ.get("LISA_API_KEY", "")).strip()
+        self.base_url = (base_url or os.environ.get("AI_BASE_URL", "")).strip().rstrip("/")
+        self.api_key = (api_key or os.environ.get("AI_API_KEY", "")).strip()
         self.model = (
             model
-            or os.environ.get("LISA_CATEGORY_MODEL", os.environ.get("LISA_SUMMARY_MODEL", os.environ.get("LISA_MODEL", "lisa-vision")))
+            or os.environ.get("AI_CATEGORY_MODEL", os.environ.get("AI_SUMMARY_MODEL", os.environ.get("AI_MODEL", "gpt-4o-mini")))
         ).strip()
 
         timeout_raw = timeout_seconds
         if timeout_raw is None:
-            timeout_raw = os.environ.get("LISA_CATEGORY_TIMEOUT_SECONDS", os.environ.get("LISA_TIMEOUT_SECONDS", "10"))
+            timeout_raw = os.environ.get("AI_CATEGORY_TIMEOUT_SECONDS", os.environ.get("AI_TIMEOUT_SECONDS", "10"))
         self.timeout_seconds = float(timeout_raw)
 
         if not self.base_url:
-            raise ValueError("LISA_BASE_URL environment variable is required")
+            raise ValueError("AI_BASE_URL environment variable is required")
         if not self.api_key:
-            raise ValueError("LISA_API_KEY environment variable is required")
+            raise ValueError("AI_API_KEY environment variable is required")
 
     def assign_category(self, prompt: str) -> dict[str, Any]:
         if not isinstance(prompt, str) or not prompt.strip():
@@ -44,39 +44,47 @@ class LisaCategoryApiClient(CategoryAssignmentAdapterProtocol):
 
         payload = {
             "model": self.model,
-            "stream": False,
             "messages": [
                 {"role": "user", "content": [{"type": "text", "text": prompt}]},
             ],
+            "response_format": {"type": "json_object"},
         }
         try:
             response = requests.post(
-                f"{self.base_url}/api/chat/completions",
+                f"{self.base_url}/v1/chat/completions",
                 headers={**self._auth_headers(), "Content-Type": "application/json"},
                 json=payload,
                 timeout=self.timeout_seconds,
             )
         except requests.RequestException as exc:
-            raise CategoryAssignmentUnavailable("LISA category assignment request failed") from exc
+            print(f"DEBUG: OpenAI category assignment request failed: {exc}")
+            raise CategoryAssignmentUnavailable("OpenAI category assignment request failed") from exc
 
         body = self._read_json_response(response)
         content = self._extract_assistant_content(body)
-        print("LISA: Step 2 done")
         if isinstance(content, dict):
             return content
         if not isinstance(content, str) or not content.strip():
-            raise InvalidCategoryAssignmentResponse("LISA category response did not include assistant content")
+            raise InvalidCategoryAssignmentResponse("OpenAI category response did not include assistant content")
         return self._parse_json_content(content)
 
     def _read_json_response(self, response: requests.Response) -> Any:
-        if response.status_code >= 500:
-            raise CategoryAssignmentUnavailable(f"LISA category assignment returned server error: {response.status_code}")
         if response.status_code >= 400:
-            raise InvalidCategoryAssignmentResponse(f"LISA category assignment rejected request: HTTP {response.status_code}")
+            print(f"DEBUG: OpenAI category assignment failed with status {response.status_code}")
+            print(f"DEBUG: Response body: {response.text}")
+        else:
+            print(f"DEBUG: OpenAI category assignment successful with status {response.status_code}")
+            print(f"DEBUG: Response body: {response.text}")
+
+        if response.status_code >= 500:
+            raise CategoryAssignmentUnavailable(f"OpenAI category assignment returned server error: {response.status_code}")
+        if response.status_code >= 400:
+            raise InvalidCategoryAssignmentResponse(f"OpenAI category assignment rejected request: HTTP {response.status_code}")
         try:
             return response.json()
         except ValueError as exc:
-            raise InvalidCategoryAssignmentResponse("LISA category assignment returned non-JSON response") from exc
+            print(f"DEBUG: OpenAI category assignment returned non-JSON response: {response.text}")
+            raise InvalidCategoryAssignmentResponse("OpenAI category assignment returned non-JSON response") from exc
 
     def _auth_headers(self) -> dict[str, str]:
         token = self.api_key
@@ -125,7 +133,7 @@ class LisaCategoryApiClient(CategoryAssignmentAdapterProtocol):
             parsed = self._parse_embedded_json(stripped)
 
         if not isinstance(parsed, dict):
-            raise InvalidCategoryAssignmentResponse("LISA category content must contain a JSON object")
+            raise InvalidCategoryAssignmentResponse("OpenAI category content must contain a JSON object")
         return parsed
 
     @staticmethod
@@ -139,5 +147,4 @@ class LisaCategoryApiClient(CategoryAssignmentAdapterProtocol):
                 return parsed
             except json.JSONDecodeError:
                 continue
-        raise InvalidCategoryAssignmentResponse("LISA category content did not contain valid JSON")
-
+        raise InvalidCategoryAssignmentResponse("OpenAI category content did not contain valid JSON")

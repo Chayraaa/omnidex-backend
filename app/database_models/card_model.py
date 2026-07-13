@@ -31,3 +31,9 @@ class CardModel(db.Model):
     category_ref: Mapped["CategoryModel"] = relationship(
         back_populates="cards"
     )
+
+    wbr: Mapped[list["WBRModel"]] = relationship(
+        "WBRModel",
+        back_populates="defender",
+        cascade="all, delete-orphan"
+    )

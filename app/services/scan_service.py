@@ -24,16 +24,17 @@ class ScanService:
     FALLBACK_CARD_SUMMARY = "No short description is currently available."
 
     def __init__(
-        self,
-        recognition_service,
-        wiki_service,
-        summary_service,
-        image_storage,
-        card_repo,
-        base_url: str,
-        category_service=None,
-        label_translation_service=None,
-        achievement_service=None,
+            self,
+            recognition_service,
+            wiki_service,
+            summary_service,
+            image_storage,
+            card_repo,
+            base_url: str,
+            category_service=None,
+            label_translation_service=None,
+            achievement_service=None,
+            moderation_repo=None
     ):
         self.recognition_service = recognition_service
         self.wiki_service = wiki_service
@@ -44,12 +45,16 @@ class ScanService:
         self.category_service = category_service or CategoryService()
         self.label_translation_service = label_translation_service or LabelTranslationService()
         self.achievement_service = achievement_service
+        self.moderation_repo = moderation_repo
 
-    def create_scan(self, user_id: int, image_input: bytes) -> ScanResultDto:
+    def create_scan(self, user_id: int, image_input: bytes) -> ScanResultDto | None:
         if user_id <= 0:
             raise ScanInputInvalid("user_id must be a positive integer")
         if not image_input:
             raise ScanInputInvalid("image input is required")
+
+        if not self.moderation_repo.is_safe(image_input):
+            return None
 
         recognition_result = self._recognize_image(image_input)
         description, knowledge_enriched = self._get_knowledge(recognition_result.label)
@@ -172,18 +177,18 @@ class ScanService:
         return candidate
 
     def _persist_card(
-        self,
-        *,
-        user_id: int,
-        card_label: str,
-        card_summary: str,
-        image_bytes: bytes,
-        confidence: float,
-        description: str,
-        source_title: str | None,
-        source_url: str | None,
-        category: str,
-        alternatives: list[dict],
+            self,
+            *,
+            user_id: int,
+            card_label: str,
+            card_summary: str,
+            image_bytes: bytes,
+            confidence: float,
+            description: str,
+            source_title: str | None,
+            source_url: str | None,
+            category: str,
+            alternatives: list[dict],
     ) -> tuple[int, str, str | None]:
         key: str | None = None
         try:

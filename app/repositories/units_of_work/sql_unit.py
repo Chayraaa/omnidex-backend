@@ -1,3 +1,5 @@
+from app.repositories.external.moderation_repo import ModerationRepo
+from app.repositories.interfaces.external.moderation_protocol import ModerationProtocol
 from app.repositories.interfaces.storage.image_repo_protocol import ImageRepoProtocol
 from app.repositories.interfaces.storage.image_storage_protocol import ImageStorageProtocol
 from app.repositories.interfaces.storage.refresh_token_repo_protocol import RefreshTokenRepositoryProtocol
@@ -33,3 +35,4 @@ class SqlUnitOfWork:
         self.collection_repo: CollectionRepoProtocol = SqlCollectionRepo()
         self.achievement_repo: AchievementRepoProtocol = SqlAchievementRepo()
         self.user_achievement_repo: UserAchievementRepoProtocol = SqlUserAchievementRepo()
+        self.moderation_repo: ModerationProtocol = ModerationRepo()

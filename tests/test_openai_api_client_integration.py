@@ -12,24 +12,24 @@ if "app" not in sys.modules:
     app_package.__path__ = [str(pathlib.Path(__file__).resolve().parents[1] / "app")]
     sys.modules["app"] = app_package
 
-def _missing_lisa_config() -> list[str]:
-    required = ("LISA_BASE_URL", "LISA_API_KEY", "LISA_TEST_IMAGE_PATH")
+def _missing_openai_config() -> list[str]:
+    required = ("AI_BASE_URL", "AI_API_KEY", "LISA_TEST_IMAGE_PATH")
     return [name for name in required if not os.environ.get(name)]
 
 
 @unittest.skipIf(
-    bool(_missing_lisa_config()),
-    "Set LISA_BASE_URL, LISA_API_KEY, and LISA_TEST_IMAGE_PATH to run real LISA API integration tests.",
+    bool(_missing_openai_config()),
+    "Set AI_BASE_URL, AI_API_KEY, and LISA_TEST_IMAGE_PATH to run real OpenAI API integration tests.",
 )
-class LisaApiClientIntegrationTests(unittest.TestCase):
-    def test_real_lisa_api_returns_recognition_result(self):
-        from app.repositories.external.lisa_api_client import LisaApiClient
+class OpenAIApiClientIntegrationTests(unittest.TestCase):
+    def test_real_openai_api_returns_recognition_result(self):
+        from app.repositories.external.openai_api_client import OpenAIApiClient
         from app.services.recognition_service import RecognitionService
 
         image_path = pathlib.Path(os.environ["LISA_TEST_IMAGE_PATH"])
         self.assertTrue(image_path.is_file(), f"Test image does not exist: {image_path}")
 
-        service = RecognitionService(LisaApiClient(), minimum_confidence=0.0)
+        service = RecognitionService(OpenAIApiClient(), minimum_confidence=0.0)
 
         result = service.recognize_image(image_path.read_bytes())
 

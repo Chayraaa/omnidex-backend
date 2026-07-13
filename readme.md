@@ -47,7 +47,7 @@ See [AI Usage](ai-usage-protocol.md)
 
 ## Scan Endpoint Quickstart (Docker)
 
-This section shows how to run the backend and call `POST /api/scan` end-to-end (LISA recognition + Wikipedia enrichment + German card summary + German card label + DB persistence).
+This section shows how to run the backend and call `POST /api/scan` end-to-end (OpenAI recognition + Wikipedia enrichment + German card summary + German card label + DB persistence).
 
 ### 1) Configure environment
 
@@ -56,21 +56,23 @@ Create `.env` in the repo root (same folder as `docker-compose.yaml`):
 ```bash
 cat > .env <<'EOF'
 JWT_SECRET=<CHANGE_ME_JWT_SECRET>
-LISA_BASE_URL=https://chat-1.ki-awz.iisys.de
-LISA_API_KEY=<PASTE_REAL_LISA_TOKEN_HERE>
-LISA_MODEL=lisa-vision
-LISA_SUMMARY_MODEL=lisa-vision
-LISA_LABEL_TRANSLATION_MODEL=lisa-vision
-LISA_TIMEOUT_SECONDS=60
-LISA_SUMMARY_TIMEOUT_SECONDS=60
-LISA_LABEL_TRANSLATION_TIMEOUT_SECONDS=60
+AI_BASE_URL=https://chat-1.ki-awz.iisys.de
+AI_API_KEY=<PASTE_REAL_OPENAI_TOKEN_HERE>
+AI_MODEL=gpt-4o-mini
+AI_SUMMARY_MODEL=gpt-4o-mini
+AI_LABEL_TRANSLATION_MODEL=gpt-4o-mini
+AI_TIMEOUT_SECONDS=60
+AI_SUMMARY_TIMEOUT_SECONDS=60
+AI_LABEL_TRANSLATION_TIMEOUT_SECONDS=60
+AI_IMAGE_MAX_SIZE=512
+AI_IMAGE_DETAIL=low
 GUNICORN_CMD_ARGS=--timeout 180
 EOF
 ```
 
 What you must replace:
 - `<CHANGE_ME_JWT_SECRET>`
-- `<PASTE_REAL_LISA_TOKEN_HERE>`
+- `<PASTE_REAL_OPENAI_TOKEN_HERE>`
 
 ### 2) Start services
 
@@ -188,7 +190,45 @@ TOKEN=$(curl -s -X POST http://127.0.0.1:5000/api/users/login \
 echo ${#TOKEN}
 ```
 
-### 4) Ensure `cards` table has collection fields (for older local DBs)
+### 4) Database Migrations
+
+This project uses `Flask-Migrate` (based on Alembic) to manage database schema changes.
+
+#### Initialize / Apply Migrations
+
+When starting the application for the first time or after a schema change, you should apply the migrations:
+
+**Using Docker:**
+```bash
+docker compose exec backend flask db upgrade
+```
+
+**Using standalone scripts (for local development via port forward):**
+The database is port forwarded to `localhost:5432`. You can use the provided scripts to upgrade the database from your host machine:
+
+- **PowerShell:**
+  ```powershell
+  .\upgrade_db.ps1
+  ```
+- **Shell:**
+  ```bash
+  chmod +x upgrade_db.sh
+  ./upgrade_db.sh
+  ```
+
+#### Creating New Migrations
+
+If you modify the database models, you need to generate a new migration script:
+
+1.  Make sure your changes are saved in the `app/database_models/` folder.
+2.  Run the following command:
+    ```bash
+    docker compose exec backend flask db migrate -m "Description of your changes"
+    ```
+3.  Review the generated script in `migrations/versions/`.
+4.  Apply the migration using `flask db upgrade`.
+
+### 5) Ensure `cards` table has collection fields (for older local DBs)
 
 Run once if your local DB was created before the latest schema changes:
 

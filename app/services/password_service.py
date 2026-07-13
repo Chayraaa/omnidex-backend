@@ -5,12 +5,18 @@ import os
 import secrets
 
 import jwt
+import logging
 from passlib.context import CryptContext
+
+logger = logging.getLogger(__name__)
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 jwt_secret_key = os.environ.get("JWT_SECRET")
 if not jwt_secret_key:
     raise ValueError("JWT_SECRET environment variable is not set")
+
+if len(jwt_secret_key) < 32:
+    logger.warning("JWT_SECRET is shorter than 32 characters. This is insecure for HS256.")
 
 
 class PasswordService:

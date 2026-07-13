@@ -1,6 +1,6 @@
 import re
 
-from app.repositories.interfaces.external.lisa_summary_adapter_protocol import LisaSummaryAdapterProtocol
+from app.repositories.interfaces.external.summary_adapter_protocol import SummaryAdapterProtocol
 from app.services.summary_errors import InvalidSummaryResponse
 
 KI_KNOWLEDGE_TAG = "(KI-Wissen)"
@@ -30,7 +30,7 @@ def _looks_incomplete(buffer: str) -> bool:
     return False
 
 class SummaryService:
-    def __init__(self, summary_adapter: LisaSummaryAdapterProtocol):
+    def __init__(self, summary_adapter: SummaryAdapterProtocol):
         self.summary_adapter = summary_adapter
 
     def summarize_object_info(self, label: str, wiki_text: str) -> str:

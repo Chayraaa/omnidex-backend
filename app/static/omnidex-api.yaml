@@ -5,6 +5,7 @@ info:
 servers:
   - url: http://127.0.0.1:5000
   - url: https://omnidex.bebelebeb.de
+  - url: http://192.168.178.72:5000
 
 components:
   securitySchemes:
@@ -413,6 +414,49 @@ components:
           type: integer
           nullable: false
           example: 20
+
+    wbrPlayRequest:
+      type: object
+      required:
+        - card_id
+      properties:
+        card_id:
+          type: integer
+          example: 101
+
+    wbrResult:
+      type: object
+      required:
+        - beats
+        - message
+        - streak
+        - new_defender
+      properties:
+        beats:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Deine Eiche zerschmettert den Stein mit ihren gewaltigen Wurzeln!"
+        streak:
+          type: integer
+          example: 5
+        new_defender:
+          type: integer
+          example: 101
+
+    wbrStatus:
+      type: object
+      required:
+        - streak
+        - defender
+      properties:
+        streak:
+          type: integer
+          example: 0
+        defender:
+          type: integer
+          example: -1
 
 
 
@@ -1442,3 +1486,47 @@ paths:
           description: User not found
         "500":
           description: Internal server error
+
+  /v1/wbr/play:
+    post:
+      summary: Play "What Beats Rock"
+      description: Use a card from your collection to attack the current defender.
+      tags:
+        - What Beats Rock
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/wbrPlayRequest"
+      responses:
+        "200":
+          description: Game result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/wbrResult"
+        "400":
+          description: Invalid input
+        "401":
+          description: Unauthorized
+        "404":
+          description: Card not found
+        "409":
+          description: Duplicate card used in current streak
+
+  /v1/wbr/status:
+    get:
+      summary: Get current game status
+      description: Returns the current streak and defender for the user.
+      tags:
+        - What Beats Rock
+      responses:
+        "200":
+          description: Current status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/wbrStatus"
+        "401":
+          description: Unauthorized

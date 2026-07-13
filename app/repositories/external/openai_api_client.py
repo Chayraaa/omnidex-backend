@@ -1,60 +1,52 @@
 import os
 import json
+import base64
 from typing import Any
 
 import requests
 
-from app.repositories.interfaces.external.lisa_adapter_protocol import LisaAdapterProtocol
+from app.repositories.interfaces.external.recognition_adapter_protocol import RecognitionAdapterProtocol
 from app.services.recognition_errors import RecognitionUnavailable, InvalidRecognitionResponse
+from app.utils.image_processing import compress_image
 
 
-class LisaApiClient(LisaAdapterProtocol):
+class OpenAIApiClient(RecognitionAdapterProtocol):
     def __init__(
         self,
         base_url: str | None = None,
         api_key: str | None = None,
         timeout_seconds: float | None = None,
         model: str | None = None,
+        image_max_size: int | None = None,
+        image_detail: str | None = None,
     ):
-        self.base_url = (base_url or os.environ.get("LISA_BASE_URL", "")).strip().rstrip("/")
-        self.api_key = (api_key or os.environ.get("LISA_API_KEY", "")).strip()
-        self.model = (model or os.environ.get("LISA_MODEL", "lisa-vision")).strip()
+        self.base_url = (base_url or os.environ.get("AI_BASE_URL", "")).strip().rstrip("/")
+        self.api_key = (api_key or os.environ.get("AI_API_KEY", "")).strip()
+        self.model = (model or os.environ.get("AI_MODEL", "gpt-4o-mini")).strip()
 
-        timeout_raw = timeout_seconds if timeout_seconds is not None else os.environ.get("LISA_TIMEOUT_SECONDS", "10")
+        timeout_raw = timeout_seconds if timeout_seconds is not None else os.environ.get("AI_TIMEOUT_SECONDS", "10")
         self.timeout_seconds = float(timeout_raw)
 
+        image_max_size_raw = image_max_size if image_max_size is not None else os.environ.get("AI_IMAGE_MAX_SIZE", "512")
+        self.image_max_size = int(image_max_size_raw)
+
+        self.image_detail = (image_detail or os.environ.get("AI_IMAGE_DETAIL", "low")).strip()
+
         if not self.base_url:
-            raise ValueError("LISA_BASE_URL environment variable is required")
+            raise ValueError("AI_BASE_URL environment variable is required")
         if not self.api_key:
-            raise ValueError("LISA_API_KEY environment variable is required")
+            raise ValueError("AI_API_KEY environment variable is required")
 
     def recognize_image(self, image_data: bytes) -> dict[str, Any]:
         if not image_data:
             raise InvalidRecognitionResponse("No image data provided for recognition")
 
-        file_id = self._upload_image(image_data)
-        payload = self._request_completion(file_id)
+        payload = self._request_completion(image_data)
         return self._normalize_payload(self._extract_assistant_payload(payload))
 
-    def _upload_image(self, image_data: bytes) -> str:
-        try:
-            response = requests.post(
-                f"{self.base_url}/api/v1/files/",
-                params={"process": "false"},
-                headers=self._auth_headers(),
-                files={"file": ("scan.jpg", image_data, "image/jpeg")},
-                timeout=self.timeout_seconds,
-            )
-        except requests.RequestException as exc:
-            raise RecognitionUnavailable("LISA image upload failed") from exc
-
-        payload = self._read_json_response(response, "LISA image upload")
-        file_id = self._extract_file_id(payload)
-        if not file_id:
-            raise InvalidRecognitionResponse("LISA image upload response did not include a file id")
-        return file_id
-
-    def _request_completion(self, file_id: str) -> dict[str, Any]:
+    def _request_completion(self, image_data: bytes) -> dict[str, Any]:
+        compressed_image = compress_image(image_data, max_size=self.image_max_size)
+        image_b64 = base64.b64encode(compressed_image).decode("utf-8")
         prompt = (
             "Analysiere das Bild und erkenne das Hauptobjekt. "
             "Gib die Antwort ausschließlich als JSON zurück. "
@@ -71,31 +63,45 @@ class LisaApiClient(LisaAdapterProtocol):
 
         request_payload = {
             "model": self.model,
-            "stream": False,
             "messages": [
                 {
                     "role": "user",
                     "content": [
                         {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": {"url": file_id}},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{image_b64}",
+                                "detail": self.image_detail
+                            },
+                        },
                     ],
                 }
             ],
+            "response_format": {"type": "json_object"},
         }
 
         try:
             response = requests.post(
-                f"{self.base_url}/api/chat/completions",
+                f"{self.base_url}/v1/chat/completions",
                 headers={**self._auth_headers(), "Content-Type": "application/json"},
                 json=request_payload,
                 timeout=self.timeout_seconds,
             )
         except requests.RequestException as exc:
-            raise RecognitionUnavailable("LISA completion request failed") from exc
-        print("LISA: Step 1 done")
-        return self._read_json_response(response, "LISA completion")
+            print(f"DEBUG: OpenAI completion request failed: {exc}")
+            raise RecognitionUnavailable("OpenAI completion request failed") from exc
+
+        return self._read_json_response(response, "OpenAI completion")
 
     def _read_json_response(self, response: requests.Response, operation: str) -> Any:
+        if response.status_code >= 400:
+            print(f"DEBUG: {operation} failed with status {response.status_code}")
+            print(f"DEBUG: Response body: {response.text}")
+        else:
+            print(f"DEBUG: {operation} successful with status {response.status_code}")
+            print(f"DEBUG: Response body: {response.text}")
+            
         if response.status_code >= 500:
             raise RecognitionUnavailable(f"{operation} returned server error: {response.status_code}")
         if response.status_code >= 400:
@@ -104,6 +110,7 @@ class LisaApiClient(LisaAdapterProtocol):
         try:
             return response.json()
         except ValueError as exc:
+            print(f"DEBUG: {operation} returned non-JSON response: {response.text}")
             raise InvalidRecognitionResponse(f"{operation} returned non-JSON response") from exc
 
     def _auth_headers(self) -> dict[str, str]:
@@ -112,27 +119,15 @@ class LisaApiClient(LisaAdapterProtocol):
             token = token[7:].strip()
         return {"Authorization": f"Bearer {token}"}
 
-    def _extract_file_id(self, payload: Any) -> str | None:
-        if not isinstance(payload, dict):
-            return None
-
-        for source in (payload, payload.get("file"), payload.get("data")):
-            if not isinstance(source, dict):
-                continue
-            value = source.get("id", source.get("file_id"))
-            if isinstance(value, str) and value.strip():
-                return value.strip()
-        return None
-
     def _extract_assistant_payload(self, payload: Any) -> dict[str, Any]:
         if not isinstance(payload, dict):
-            raise InvalidRecognitionResponse("LISA completion payload must be a JSON object")
+            raise InvalidRecognitionResponse("OpenAI completion payload must be a JSON object")
 
         content = self._extract_assistant_content(payload)
         if isinstance(content, dict):
             return content
         if not isinstance(content, str) or not content.strip():
-            raise InvalidRecognitionResponse("LISA completion response did not include assistant content")
+            raise InvalidRecognitionResponse("OpenAI completion response did not include assistant content")
 
         return self._parse_json_content(content)
 
@@ -174,7 +169,7 @@ class LisaApiClient(LisaAdapterProtocol):
             parsed = self._parse_embedded_json(stripped)
 
         if not isinstance(parsed, dict):
-            raise InvalidRecognitionResponse("LISA assistant content must contain a JSON object")
+            raise InvalidRecognitionResponse("OpenAI assistant content must contain a JSON object")
         return parsed
 
     @staticmethod
@@ -188,15 +183,15 @@ class LisaApiClient(LisaAdapterProtocol):
                 return parsed
             except json.JSONDecodeError:
                 continue
-        raise InvalidRecognitionResponse("LISA assistant content did not contain valid JSON")
+        raise InvalidRecognitionResponse("OpenAI assistant content did not contain valid JSON")
 
     def _normalize_payload(self, payload: Any) -> dict[str, Any]:
         if not isinstance(payload, dict):
-            raise InvalidRecognitionResponse("LISA payload must be a JSON object")
+            raise InvalidRecognitionResponse("OpenAI payload must be a JSON object")
 
         candidates = self._extract_candidates(payload)
         if not candidates:
-            raise InvalidRecognitionResponse("No recognition candidates found in LISA payload")
+            raise InvalidRecognitionResponse("No recognition candidates found in OpenAI payload")
 
         candidates.sort(
             key=lambda item: item.get("confidence")

@@ -24,7 +24,8 @@ class UserModel(db.Model):
 
     user_achievements: Mapped[list["UserAchievementModel"]] = relationship(
         "UserAchievementModel",
-        back_populates="user"
+        back_populates="user",
+        cascade="all, delete-orphan"
     )
 
     refresh_tokens = relationship(
@@ -43,5 +44,11 @@ class UserModel(db.Model):
         "FriendsModel",
         foreign_keys="FriendsModel.friend_id",
         back_populates="friend",
+    )
+
+    wbr: Mapped[list["WBRModel"]] = relationship(
+        "WBRModel",
+        back_populates="user",
+        cascade="all, delete-orphan"
     )
 

@@ -2,7 +2,7 @@ import os
 from typing import Any
 
 from app.domain_models.recognition_result import RecognitionResult, RecognitionAlternative
-from app.repositories.interfaces.external.lisa_adapter_protocol import LisaAdapterProtocol
+from app.repositories.interfaces.external.recognition_adapter_protocol import RecognitionAdapterProtocol
 from app.services.recognition_errors import (
     RecognitionUnavailable,
     LowConfidence,
@@ -13,13 +13,13 @@ from app.services.recognition_errors import (
 class RecognitionService:
     def __init__(
         self,
-        lisa_adapter: LisaAdapterProtocol,
+        recognition_adapter: RecognitionAdapterProtocol,
         minimum_confidence: float | None = None,
     ):
-        self.lisa_adapter = lisa_adapter
+        self.recognition_adapter = recognition_adapter
         threshold_raw = minimum_confidence if minimum_confidence is not None else os.environ.get(
             "RECOGNITION_MIN_CONFIDENCE",
-            "0.90",
+            "0.70",
         )
         self.minimum_confidence = float(threshold_raw)
 
@@ -28,7 +28,7 @@ class RecognitionService:
             raise InvalidRecognitionResponse("No image payload provided")
 
         try:
-            payload = self.lisa_adapter.recognize_image(image_data)
+            payload = self.recognition_adapter.recognize_image(image_data)
         except (RecognitionUnavailable, InvalidRecognitionResponse):
             raise
         except Exception as exc:

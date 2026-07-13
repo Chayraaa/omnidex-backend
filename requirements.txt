@@ -10,3 +10,5 @@ minio
 openapi-core
 requests
 authlib
+Pillow
+Flask-Migrate

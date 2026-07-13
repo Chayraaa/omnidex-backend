@@ -3,11 +3,11 @@ from typing import Any
 
 import requests
 
-from app.repositories.interfaces.external.lisa_summary_adapter_protocol import LisaSummaryAdapterProtocol
+from app.repositories.interfaces.external.summary_adapter_protocol import SummaryAdapterProtocol
 from app.services.summary_errors import SummaryUnavailable, InvalidSummaryResponse
 
 
-class LisaSummaryApiClient(LisaSummaryAdapterProtocol):
+class OpenAISummaryApiClient(SummaryAdapterProtocol):
     def __init__(
         self,
         base_url: str | None = None,
@@ -15,18 +15,18 @@ class LisaSummaryApiClient(LisaSummaryAdapterProtocol):
         timeout_seconds: float | None = None,
         model: str | None = None,
     ):
-        self.base_url = (base_url or os.environ.get("LISA_BASE_URL", "")).strip().rstrip("/")
-        self.api_key = (api_key or os.environ.get("LISA_API_KEY", "")).strip()
-        self.model = (model or os.environ.get("LISA_SUMMARY_MODEL", os.environ.get("LISA_MODEL", "lisa-vision"))).strip()
+        self.base_url = (base_url or os.environ.get("AI_BASE_URL", "")).strip().rstrip("/")
+        self.api_key = (api_key or os.environ.get("AI_API_KEY", "")).strip()
+        self.model = (model or os.environ.get("AI_SUMMARY_MODEL", os.environ.get("AI_MODEL", "gpt-4o-mini"))).strip()
         timeout_raw = timeout_seconds
         if timeout_raw is None:
-            timeout_raw = os.environ.get("LISA_SUMMARY_TIMEOUT_SECONDS", os.environ.get("LISA_TIMEOUT_SECONDS", "10"))
+            timeout_raw = os.environ.get("AI_SUMMARY_TIMEOUT_SECONDS", os.environ.get("AI_TIMEOUT_SECONDS", "10"))
         self.timeout_seconds = float(timeout_raw)
 
         if not self.base_url:
-            raise ValueError("LISA_BASE_URL environment variable is required")
+            raise ValueError("AI_BASE_URL environment variable is required")
         if not self.api_key:
-            raise ValueError("LISA_API_KEY environment variable is required")
+            raise ValueError("AI_API_KEY environment variable is required")
 
     def summarize_text(self, prompt: str) -> str:
         if not isinstance(prompt, str) or not prompt.strip():
@@ -41,29 +41,37 @@ class LisaSummaryApiClient(LisaSummaryAdapterProtocol):
         }
         try:
             response = requests.post(
-                f"{self.base_url}/api/chat/completions",
+                f"{self.base_url}/v1/chat/completions",
                 headers={**self._auth_headers(), "Content-Type": "application/json"},
                 json=payload,
                 timeout=self.timeout_seconds,
             )
         except requests.RequestException as exc:
-            raise SummaryUnavailable("LISA summary request failed") from exc
-        print("LISA: Step 3 done")
+            print(f"DEBUG: OpenAI summary request failed: {exc}")
+            raise SummaryUnavailable("OpenAI summary request failed") from exc
         body = self._read_json_response(response)
         content = self._extract_assistant_content(body)
         if isinstance(content, str) and content.strip():
             return content.strip()
-        raise InvalidSummaryResponse("LISA summary response did not include assistant content")
+        raise InvalidSummaryResponse("OpenAI summary response did not include assistant content")
 
     def _read_json_response(self, response: requests.Response) -> Any:
-        if response.status_code >= 500:
-            raise SummaryUnavailable(f"LISA summary returned server error: {response.status_code}")
         if response.status_code >= 400:
-            raise InvalidSummaryResponse(f"LISA summary rejected request: HTTP {response.status_code}")
+            print(f"DEBUG: OpenAI summary failed with status {response.status_code}")
+            print(f"DEBUG: Response body: {response.text}")
+        else:
+            print(f"DEBUG: OpenAI summary successful with status {response.status_code}")
+            print(f"DEBUG: Response body: {response.text}")
+
+        if response.status_code >= 500:
+            raise SummaryUnavailable(f"OpenAI summary returned server error: {response.status_code}")
+        if response.status_code >= 400:
+            raise InvalidSummaryResponse(f"OpenAI summary rejected request: HTTP {response.status_code}")
         try:
             return response.json()
         except ValueError as exc:
-            raise InvalidSummaryResponse("LISA summary returned non-JSON response") from exc
+            print(f"DEBUG: OpenAI summary returned non-JSON response: {response.text}")
+            raise InvalidSummaryResponse("OpenAI summary returned non-JSON response") from exc
 
     def _auth_headers(self) -> dict[str, str]:
         token = self.api_key

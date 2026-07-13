@@ -9,8 +9,6 @@ from openapi_core.contrib.flask import FlaskOpenAPIRequest
 from openapi_core.exceptions import OpenAPIError
 from openapi_core.validation.request.exceptions import InvalidRequestBody
 from openapi_core.validation.schemas.exceptions import InvalidSchemaValue
-from sqlalchemy import inspect
-from sqlalchemy import text
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app.repositories.units_of_work.sql_unit import SqlUnitOfWork
@@ -26,12 +24,14 @@ from app.services.category_service import CategoryService
 from app.services.label_translation_service import LabelTranslationService
 from app.services.user_service import UserService
 from app.repositories.external.wiki_repo import WikiRepo
-from app.repositories.external.lisa_api_client import LisaApiClient
-from app.repositories.external.lisa_summary_api_client import LisaSummaryApiClient
-from app.repositories.external.lisa_label_translation_api_client import LisaLabelTranslationApiClient
+from app.repositories.external.openai_api_client import OpenAIApiClient
+from app.repositories.external.openai_summary_api_client import OpenAISummaryApiClient
+from app.repositories.external.openai_label_translation_api_client import OpenAILabelTranslationApiClient
 from app.services.friends_service import FriendsService
-from app.repositories.external.lisa_category_api_client import LisaCategoryApiClient
-from app.extensions import db
+from app.repositories.external.openai_category_api_client import OpenAICategoryApiClient
+from app.repositories.external.openai_wbr_api_client import OpenAIWBRApiClient
+from app.repositories.external.what_beats_rock import WhatBeatsRock
+from app.extensions import db, migrate
 from openapi_core import OpenAPI
 from app.services.achievement_service import AchievementService
 from app.services.wiki_service import WikiService
@@ -46,6 +46,7 @@ from app.database_models.friends_model import FriendsModel
 from app.database_models.category_model import CategoryModel
 from app.database_models.first_discovered_model import FirstDiscoveredModel
 from app.database_models.user_achievement_model import UserAchievementModel
+from app.database_models.wbr_model import WBRModel
 
 # Open API file path
 api_url = "/static/omnidex-api.yaml"
@@ -90,18 +91,7 @@ def setup_database(app: Flask):
 
     app.logger.info(f"Connecting to database: {app.config['SQLALCHEMY_DATABASE_URI']}")
     db.init_app(app)
-
-    with app.app_context():
-        inspector = inspect(db.engine)
-        for table_name, table_obj in db.metadata.tables.items():
-            if not inspector.has_table(table_name):
-                try:
-                    table_obj.create(db.engine)
-                    app.logger.info(f"Created table: {table_name}")
-                except Exception as e:
-                    app.logger.error(f"Error creating table {table_name}")
-            else:
-                app.logger.info(f"Table {table_name} already exists")
+    migrate.init_app(app, db)
 
 
 ########################
@@ -133,14 +123,14 @@ def setup_services(app: Flask):
     app.image_service = ImageService(storage_unit_of_work.image_storage, storage_unit_of_work.image_repo,
                                      base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"))
     app.wiki_service = WikiService(WikiRepo())
-    lisa_adapter = LisaApiClient()
-    lisa_summary_adapter = LisaSummaryApiClient()
-    lisa_category_adapter = LisaCategoryApiClient()
-    lisa_label_translation_adapter = LisaLabelTranslationApiClient()
-    app.recognition_service = RecognitionService(lisa_adapter)
-    app.summary_service = SummaryService(lisa_summary_adapter)
-    app.category_service = CategoryService(lisa_category_adapter)
-    app.label_translation_service = LabelTranslationService(lisa_label_translation_adapter)
+    openai_adapter = OpenAIApiClient()
+    openai_summary_adapter = OpenAISummaryApiClient()
+    openai_category_adapter = OpenAICategoryApiClient()
+    openai_label_translation_adapter = OpenAILabelTranslationApiClient()
+    app.recognition_service = RecognitionService(openai_adapter)
+    app.summary_service = SummaryService(openai_summary_adapter)
+    app.category_service = CategoryService(openai_category_adapter)
+    app.label_translation_service = LabelTranslationService(openai_label_translation_adapter)
     app.scan_service = ScanService(
         app.recognition_service,
         app.wiki_service,
@@ -151,6 +141,7 @@ def setup_services(app: Flask):
         category_service=app.category_service,
         label_translation_service=app.label_translation_service,
         achievement_service=app.achievement_service,
+        moderation_repo=storage_unit_of_work.moderation_repo
     )
     app.collection_service = CollectionService(
         storage_unit_of_work.collection_repo,
@@ -165,6 +156,8 @@ def setup_services(app: Flask):
         storage_unit_of_work.card_repo,
         base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000")
     )
+    openai_wbr_adapter = OpenAIWBRApiClient()
+    app.wbr_service = WhatBeatsRock(storage_unit_of_work.user_repo, openai_wbr_adapter)
 
 
 # Add all the routes here (see health as example)
@@ -185,6 +178,8 @@ def setup_routes(app: Flask):
     app.register_blueprint(achievements, url_prefix="/v1/achievements")
     from .routes.friends import friends
     app.register_blueprint(friends, url_prefix="/v1/friends")
+    from .routes.wbr import wbr
+    app.register_blueprint(wbr, url_prefix="/v1/wbr")
 
 
 ########################
@@ -266,7 +261,10 @@ def open_api_page(app):
 
 
 # Here everything for app creation is inited.
-def create_app():
+def create_app(skip_services=None):
+    if skip_services is None:
+        skip_services = os.environ.get("SKIP_SERVICES") == "1"
+
     app = Flask(__name__)
 
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
@@ -275,8 +273,9 @@ def create_app():
     setup_openapi(app)
     setup_oauth(app)
     setup_database(app)
-    setup_services(app)
-    setup_routes(app)
-    open_api_page(app)
+    if not skip_services:
+        setup_services(app)
+        setup_routes(app)
+        open_api_page(app)
 
     return app
