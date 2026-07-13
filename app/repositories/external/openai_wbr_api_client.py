@@ -39,6 +39,7 @@ class OpenAIWBRApiClient(WBRAdapterProtocol):
         - typischen Eigenschaften der Dinge
 
         Sei offen für clevere Lösungen, aber akzeptiere keine völlig erfundenen oder extrem unwahrscheinlichen Szenarien.
+        Stein soll leicht zu besiegen sein.
         
         Sprachstil:
         - Schreibe wie ein deutscher Muttersprachler.
@@ -62,6 +63,7 @@ class OpenAIWBRApiClient(WBRAdapterProtocol):
         Beispiele:
         - Feuer besiegt Eis, weil Hitze Eis schmilzt.
         - Schere besiegt Papier, weil sie es schneiden kann.
+        - Buch besiegt Stein, weil Papier einen Stein umwickeln kann.
         - Katze besiegt Brief, weil sie Papier zerreißen kann.
         - Schmetterling besiegt keine Katze, weil die Katze deutlich stärker und schneller ist.
 
