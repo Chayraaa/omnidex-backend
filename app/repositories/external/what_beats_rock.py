@@ -31,6 +31,8 @@ class WhatBeatsRock(WhatBeatsRockProtocol):
 
         if beats:
             wbr_model.streak += 1
+            if wbr_model.streak > wbr_model.highscore:
+                wbr_model.highscore = wbr_model.streak
             wbr_model.defender_id = attacker.id
             # Update history
             history_list.append(str(attacker.id))
@@ -58,6 +60,12 @@ class WhatBeatsRock(WhatBeatsRockProtocol):
         if wbr_model is None:
             return 0
         return wbr_model.streak
+
+    def get_highscore(self, user: User) -> int:
+        wbr_model = db.session.get(WBRModel, user.id)
+        if wbr_model is None:
+            return 0
+        return wbr_model.highscore
 
     def reset_streak(self, user: User) -> None:
         wbr_model = db.session.get(WBRModel, user.id)

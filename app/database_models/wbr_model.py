@@ -8,6 +8,7 @@ class WBRModel(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     defender_id: Mapped[int | None] = mapped_column(ForeignKey("cards.id"), default=None, nullable=True)
     streak: Mapped[int] = mapped_column(default=0)
+    highscore: Mapped[int] = mapped_column(default=0)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     history: Mapped[str | None] = mapped_column(default=None, nullable=True)
 

@@ -42,12 +42,14 @@ def play_wbr(user: User):
         }, 409)
 
     streak = current_app.wbr_service.get_streak(user)
+    highscore = current_app.wbr_service.get_highscore(user)
     new_defender = current_app.wbr_service.get_current_defender(user)
 
     return json_no_store({
         "beats": beats,
         "message": message,
         "streak": streak,
+        "highscore": highscore,
         "new_defender": new_defender
     }, 200)
 
@@ -56,9 +58,11 @@ def play_wbr(user: User):
 @login_required
 def get_wbr_status(user: User):
     streak = current_app.wbr_service.get_streak(user)
+    highscore = current_app.wbr_service.get_highscore(user)
     defender = current_app.wbr_service.get_current_defender(user)
 
     return json_no_store({
         "streak": streak,
+        "highscore": highscore,
         "defender": defender
     }, 200)

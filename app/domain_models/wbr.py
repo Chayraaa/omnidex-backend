@@ -10,4 +10,5 @@ class WBR:
     user: User
     defender: Card | None
     streak: int
+    highscore: int = 0
     history: str | None = None

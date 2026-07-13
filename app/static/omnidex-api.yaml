@@ -441,6 +441,9 @@ components:
         streak:
           type: integer
           example: 5
+        highscore:
+          type: integer
+          example: 10
         new_defender:
           type: integer
           example: 101
@@ -449,9 +452,13 @@ components:
       type: object
       required:
         - streak
+        - highscore
         - defender
       properties:
         streak:
+          type: integer
+          example: 0
+        highscore:
           type: integer
           example: 0
         defender:
