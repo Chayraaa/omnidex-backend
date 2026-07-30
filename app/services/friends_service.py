@@ -2,8 +2,8 @@ from app.domain_models.user import User
 from app.repositories.interfaces.storage.friends_repo_protocol import FriendsRepoProtocol
 from app.repositories.interfaces.storage.user_repo_protocol import UserRepoProtocol
 from app.repositories.interfaces.storage.card_repo_protocol import CardRepoProtocol
-from app.repositories.interfaces.storage.card_battle_repo_interface import CardBattleGameRepoInterface
-from app.repositories.interfaces.external.what_beats_rock_protocol import WhatBeatsRockProtocol
+from app.repositories.storage.sql_card_battle_result_repo import SqlCardBattleResultRepo
+from app.repositories.storage.sql_wbr_play_repo import SqlWBRPlayRepo
 from enum import Enum
 
 
@@ -14,13 +14,13 @@ class FriendshipStatus(str, Enum):
 
 
 class FriendsService:
-    def __init__(self, friends_repo: FriendsRepoProtocol, user_repo: UserRepoProtocol, card_repo: CardRepoProtocol, base_url: str, wbr_service: WhatBeatsRockProtocol = None, card_battle_repo: CardBattleGameRepoInterface = None):
+    def __init__(self, friends_repo: FriendsRepoProtocol, user_repo: UserRepoProtocol, card_repo: CardRepoProtocol, base_url: str, wbr_play_repo: SqlWBRPlayRepo = None, card_battle_result_repo: SqlCardBattleResultRepo = None):
         self.friends_repo = friends_repo
         self.user_repo = user_repo
         self.card_repo = card_repo
         self.base_url = base_url.rstrip("/")
-        self.wbr_service = wbr_service
-        self.card_battle_repo = card_battle_repo
+        self.wbr_play_repo = wbr_play_repo
+        self.card_battle_result_repo = card_battle_result_repo
 
     # SEND FRIEND REQUEST
     def create_friend_request(self, sender: User, friend_code: str) -> bool:
@@ -136,38 +136,28 @@ class FriendsService:
                 "cost": c.cost,
             })
 
-        if self.wbr_service:
-            wbr_stats = self.wbr_service.get_wbr_stats_for_user_ids(friend_ids)
-            for stat in wbr_stats:
+        if self.wbr_play_repo:
+            wbr_plays = self.wbr_play_repo.get_plays_by_user_ids(friend_ids)
+            for play in wbr_plays:
                 feed.append({
                     "type": "wbr_played",
-                    "userId": stat["userId"],
-                    "streak": stat["streak"],
-                    "highscore": stat["highscore"],
+                    "userId": play["userId"],
+                    "streak": play["streak"],
+                    "highscore": play["highscore"],
+                    "won": play["won"],
+                    "playedAt": play["playedAt"],
                 })
 
-        if self.card_battle_repo:
-            games = self.card_battle_repo.get_games_by_player_ids(friend_ids)
-            for game in games:
-                gs = game.game_state
-                if not gs.p1_has_won and not gs.p2_has_won:
-                    continue
-                for friend_id in friend_ids:
-                    if game.player1_id == friend_id:
-                        feed.append({
-                            "type": "card_battle_result",
-                            "gameId": game.id,
-                            "userId": friend_id,
-                            "opponentId": game.player2_id,
-                            "won": gs.p1_has_won,
-                        })
-                    elif game.player2_id == friend_id:
-                        feed.append({
-                            "type": "card_battle_result",
-                            "gameId": game.id,
-                            "userId": friend_id,
-                            "opponentId": game.player1_id,
-                            "won": gs.p2_has_won,
-                        })
+        if self.card_battle_result_repo:
+            battle_results = self.card_battle_result_repo.get_results_by_player_ids(friend_ids)
+            for r in battle_results:
+                feed.append({
+                    "type": "card_battle_result",
+                    "gameId": r["gameId"],
+                    "userId": r["userId"],
+                    "opponentId": r["opponentId"],
+                    "won": r["won"],
+                    "playedAt": r["playedAt"],
+                })
 
         return feed

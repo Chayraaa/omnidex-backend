@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
@@ -11,6 +11,7 @@ class WBRModel(db.Model):
     highscore: Mapped[int] = mapped_column(default=0)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     history: Mapped[str | None] = mapped_column(default=None, nullable=True)
+    played_at: Mapped[object] = mapped_column(DateTime, nullable=True, default=None)
 
     user = relationship("UserModel", back_populates="wbr")
     defender = relationship("CardModel", back_populates="wbr")

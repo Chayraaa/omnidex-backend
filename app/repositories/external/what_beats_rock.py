@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from app.database_models.wbr_model import WBRModel
 from app.domain_models.card import Card
 from app.domain_models.wbr import WBR
@@ -6,6 +8,7 @@ from app.domain_models.user import User
 from app.repositories.interfaces.external.what_beats_rock_protocol import WhatBeatsRockProtocol
 from app.repositories.interfaces.storage.user_repo_protocol import UserRepoProtocol
 from app.repositories.interfaces.external.wbr_adapter_protocol import WBRAdapterProtocol
+from app.repositories.storage.sql_wbr_play_repo import SqlWBRPlayRepo
 from app.services.wbr_errors import DuplicateCardError
 
 
@@ -13,6 +16,7 @@ class WhatBeatsRock(WhatBeatsRockProtocol):
     def __init__(self, user_repo: UserRepoProtocol, wbr_adapter: WBRAdapterProtocol):
         self.user_repo = user_repo
         self.wbr_adapter = wbr_adapter
+        self.play_repo = SqlWBRPlayRepo()
 
     def does_beat(self, attacker: Card, user: User) -> tuple[bool, str]:
         wbr_model = db.session.get(WBRModel, user.id)
@@ -40,7 +44,17 @@ class WhatBeatsRock(WhatBeatsRockProtocol):
         else:
             self.reset_streak(user)
 
+        now = datetime.now(timezone.utc)
+        wbr_model.played_at = now
         db.session.commit()
+
+        self.play_repo.record_play(
+            user_id=user.id,
+            streak=wbr_model.streak,
+            highscore=wbr_model.highscore,
+            won=beats,
+            played_at=now,
+        )
         return beats, message
 
     def get_current_defender(self, user: User) -> int:
@@ -79,7 +93,12 @@ class WhatBeatsRock(WhatBeatsRockProtocol):
     def get_wbr_stats_for_user_ids(self, user_ids: list[int]) -> list[dict]:
         models = db.session.query(WBRModel).filter(WBRModel.user_id.in_(user_ids)).all()
         return [
-            {"userId": m.user_id, "streak": m.streak, "highscore": m.highscore}
+            {
+                "userId": m.user_id,
+                "streak": m.streak,
+                "highscore": m.highscore,
+                "playedAt": m.played_at.isoformat() if m.played_at else None,
+            }
             for m in models
             if m.streak > 0 or m.highscore > 0
         ]

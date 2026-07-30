@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
@@ -12,6 +12,7 @@ class CardBattleGameModel(db.Model):
     player1_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
     player2_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
     game_state: Mapped[str] = mapped_column(nullable=False)
+    created_at: Mapped[object] = mapped_column(DateTime, nullable=True, default=None)
 
     player1: Mapped["UserModel"] = relationship(
         "UserModel",

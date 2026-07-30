@@ -5,6 +5,7 @@ from app.repositories.interfaces.storage.card_repo_protocol import CardRepoProto
 from app.repositories.interfaces.storage.deck_repo_protocol import DeckRepoProtocol
 from app.repositories.interfaces.storage.friends_repo_protocol import FriendsRepoProtocol
 from app.repositories.interfaces.storage.user_repo_protocol import UserRepoProtocol
+from app.repositories.storage.sql_card_battle_result_repo import SqlCardBattleResultRepo
 from app.services.games.card_battle import card_battle, card_battle_ai
 from app.services.games.card_battle.event_publisher import game_event_publisher
 from app.domain_models.card import BattleType
@@ -20,6 +21,7 @@ class CardBattleInteractionService:
         self.deck_repo = deck_repo
         self.card_repo = card_repo
         self.friends_repo = friends_repo
+        self.result_repo = SqlCardBattleResultRepo()
 
     def create_lobby(self, player1_id: int | None, player2_id: int | None, name: str = "Card Battle"):
         user1 = self.user_repo.get_user(player1_id) if player1_id is not None else None
@@ -88,6 +90,19 @@ class CardBattleInteractionService:
             return 2
         raise ValueError("User not in game")
 
+    def _record_result_if_game_over(self, game) -> None:
+        gs = game.game_state
+        if not gs.p1_has_won and not gs.p2_has_won:
+            return
+        if self.result_repo.has_result_for_game(game.id):
+            return
+        self.result_repo.record_result(
+            game_id=game.id,
+            player1_id=game.player1_id,
+            player2_id=game.player2_id,
+            player1_won=gs.p1_has_won,
+        )
+
     def _notify(self, game):
         logger.debug(f"[SYNC] _notify: broadcasting state for game {game.id} "
                      f"(p1_turn={game.game_state.p1_turn}, "
@@ -110,10 +125,12 @@ class CardBattleInteractionService:
         if state.p1_turn and game.player1_id is None:
             logger.debug(f"[SYNC] _handle_ai_if_needed: triggering AI for player 1, game {game.id}")
             game.game_state = card_battle_ai.take_ai_turn(game.game_state, player=1, on_step=on_step)
+            self._record_result_if_game_over(game)
             self._handle_ai_if_needed(game)  # Check if it's still AI turn
         elif not state.p1_turn and game.player2_id is None:
             logger.debug(f"[SYNC] _handle_ai_if_needed: triggering AI for player 2, game {game.id}")
             game.game_state = card_battle_ai.take_ai_turn(game.game_state, player=2, on_step=on_step)
+            self._record_result_if_game_over(game)
             self._handle_ai_if_needed(game)
 
     def play_card(self, game_id: int, user_id: int, card_id: int, target_pos: int | None = None):
@@ -165,6 +182,7 @@ class CardBattleInteractionService:
         game.game_state = card_battle.end_turn(game.game_state, player_num)
         logger.debug(f"[ACTION] end_turn: p1_turn_after={game.game_state.p1_turn}")
         self.card_battle_repo.update_card_battle_game(game)
+        self._record_result_if_game_over(game)
         self._notify(game)
         self._handle_ai_if_needed(game)
         return game
@@ -179,6 +197,7 @@ class CardBattleInteractionService:
         logger.debug(f"[ACTION] pass_round result: p1_passed={game.game_state.p1_passed}, "
                      f"p2_passed={game.game_state.p2_passed}, p1_turn={game.game_state.p1_turn}")
         self.card_battle_repo.update_card_battle_game(game)
+        self._record_result_if_game_over(game)
         self._notify(game)
         self._handle_ai_if_needed(game)
         return game

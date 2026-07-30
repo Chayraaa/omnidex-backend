@@ -53,6 +53,8 @@ from app.database_models.first_discovered_model import FirstDiscoveredModel
 from app.database_models.user_achievement_model import UserAchievementModel
 from app.database_models.wbr_model import WBRModel
 from app.database_models.card_battle_model import CardBattleGameModel
+from app.database_models.card_battle_result_model import CardBattleResultModel
+from app.database_models.wbr_play_model import WBRPlayModel
 from app.database_models.deck_model import DeckModel
 from app.database_models.notification_model import NotificationModel
 
@@ -163,13 +165,15 @@ def setup_services(app: Flask):
                                                   app.achievement_service)
     openai_wbr_adapter = OpenAIWBRApiClient()
     app.wbr_service = WhatBeatsRock(storage_unit_of_work.user_repo, openai_wbr_adapter)
+    from app.repositories.storage.sql_card_battle_result_repo import SqlCardBattleResultRepo
+    from app.repositories.storage.sql_wbr_play_repo import SqlWBRPlayRepo
     app.friends_service = FriendsService(
         storage_unit_of_work.friends_repo,
         storage_unit_of_work.user_repo,
         storage_unit_of_work.card_repo,
         base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"),
-        wbr_service=app.wbr_service,
-        card_battle_repo=storage_unit_of_work.card_battle_repo,
+        wbr_play_repo=SqlWBRPlayRepo(),
+        card_battle_result_repo=SqlCardBattleResultRepo(),
     )
     app.deck_service = DeckService(storage_unit_of_work.deck_repo)
     app.card_battle_interaction_service = CardBattleInteractionService(
