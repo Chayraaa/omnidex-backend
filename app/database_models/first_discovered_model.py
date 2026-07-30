@@ -11,4 +11,4 @@ class FirstDiscoveredModel(db.Model):
         primary_key=True
     )
 
-    card: Mapped["CardModel"] = relationship("CardModel")
+    card: Mapped["CardModel"] = relationship("CardModel", back_populates="first_discovered")

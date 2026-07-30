@@ -2,6 +2,8 @@ from datetime import datetime
 
 from sqlalchemy import ForeignKey, UniqueConstraint, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.domain_models.card import BattleType
 from app.extensions import db
 
 
@@ -24,6 +26,10 @@ class CardModel(db.Model):
     created_at: Mapped[datetime] = mapped_column(nullable=False, default=datetime.utcnow)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"), nullable=True)
+    battle_type: Mapped[str] = mapped_column(nullable=False, default=BattleType.FIGHTER.value)
+    attack: Mapped[int] = mapped_column(nullable=False, default=10)
+    health: Mapped[int] = mapped_column(nullable=False, default=10)
+    cost: Mapped[int] = mapped_column(nullable=False, default=1)
 
     user: Mapped["UserModel"] = relationship(
         back_populates="cards"
@@ -36,4 +42,10 @@ class CardModel(db.Model):
         "WBRModel",
         back_populates="defender",
         cascade="all, delete-orphan"
+    )
+
+    first_discovered: Mapped[list["FirstDiscoveredModel"]] = relationship(
+        "FirstDiscoveredModel",
+        back_populates="card",
+        cascade="all, delete-orphan",
     )

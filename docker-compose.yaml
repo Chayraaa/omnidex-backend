@@ -1,25 +1,25 @@
 version: '3.9'
 
 services:
-  traefik:
-    image: traefik:v3.1
-    restart: unless-stopped
-    command:
-      - "--providers.file.directory=/etc/traefik/dynamic"
-      - "--providers.file.watch=true"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.letsencrypt.acme.email=karla.schra@gmail.com"
-      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - "traefik_certs:/letsencrypt"
-      - "./traefik-dynamic:/etc/traefik/dynamic:ro"
+#  traefik:
+#    image: traefik:v3.1
+#    restart: unless-stopped
+#    command:
+#      - "--providers.file.directory=/etc/traefik/dynamic"
+#      - "--providers.file.watch=true"
+#      - "--entrypoints.web.address=:80"
+#      - "--entrypoints.websecure.address=:443"
+#      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+#      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+#      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+#      - "--certificatesresolvers.letsencrypt.acme.email=karla.schra@gmail.com"
+#      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#    volumes:
+#      - "traefik_certs:/letsencrypt"
+#      - "./traefik-dynamic:/etc/traefik/dynamic:ro"
 
 
   backend:

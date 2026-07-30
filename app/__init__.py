@@ -1,3 +1,4 @@
+
 import logging
 import os
 from functools import wraps
@@ -22,6 +23,7 @@ from app.services.collection_service import CollectionService
 from app.services.summary_service import SummaryService
 from app.services.category_service import CategoryService
 from app.services.label_translation_service import LabelTranslationService
+from app.services.card_stats_service import CardStatsService
 from app.services.user_service import UserService
 from app.repositories.external.wiki_repo import WikiRepo
 from app.repositories.external.openai_api_client import OpenAIApiClient
@@ -30,11 +32,14 @@ from app.repositories.external.openai_label_translation_api_client import OpenAI
 from app.services.friends_service import FriendsService
 from app.repositories.external.openai_category_api_client import OpenAICategoryApiClient
 from app.repositories.external.openai_wbr_api_client import OpenAIWBRApiClient
+from app.repositories.external.openai_card_stats_api_client import OpenAICardStatsApiClient
 from app.repositories.external.what_beats_rock import WhatBeatsRock
 from app.extensions import db, migrate
 from openapi_core import OpenAPI
 from app.services.achievement_service import AchievementService
 from app.services.wiki_service import WikiService
+from app.services.deck_service import DeckService
+from app.services.games.card_battle.card_battle_interaction_service import CardBattleInteractionService
 from app.http_cache import json_no_store
 
 # Add all the db database_models here
@@ -47,6 +52,9 @@ from app.database_models.category_model import CategoryModel
 from app.database_models.first_discovered_model import FirstDiscoveredModel
 from app.database_models.user_achievement_model import UserAchievementModel
 from app.database_models.wbr_model import WBRModel
+from app.database_models.card_battle_model import CardBattleGameModel
+from app.database_models.deck_model import DeckModel
+from app.database_models.notification_model import NotificationModel
 
 # Open API file path
 api_url = "/static/omnidex-api.yaml"
@@ -127,10 +135,12 @@ def setup_services(app: Flask):
     openai_summary_adapter = OpenAISummaryApiClient()
     openai_category_adapter = OpenAICategoryApiClient()
     openai_label_translation_adapter = OpenAILabelTranslationApiClient()
+    openai_card_stats_adapter = OpenAICardStatsApiClient()
     app.recognition_service = RecognitionService(openai_adapter)
     app.summary_service = SummaryService(openai_summary_adapter)
     app.category_service = CategoryService(openai_category_adapter)
     app.label_translation_service = LabelTranslationService(openai_label_translation_adapter)
+    app.card_stats_service = CardStatsService(openai_card_stats_adapter)
     app.scan_service = ScanService(
         app.recognition_service,
         app.wiki_service,
@@ -141,7 +151,8 @@ def setup_services(app: Flask):
         category_service=app.category_service,
         label_translation_service=app.label_translation_service,
         achievement_service=app.achievement_service,
-        moderation_repo=storage_unit_of_work.moderation_repo
+        moderation_repo=storage_unit_of_work.moderation_repo,
+        card_stats_service=app.card_stats_service
     )
     app.collection_service = CollectionService(
         storage_unit_of_work.collection_repo,
@@ -158,6 +169,13 @@ def setup_services(app: Flask):
     )
     openai_wbr_adapter = OpenAIWBRApiClient()
     app.wbr_service = WhatBeatsRock(storage_unit_of_work.user_repo, openai_wbr_adapter)
+    app.deck_service = DeckService(storage_unit_of_work.deck_repo)
+    app.card_battle_interaction_service = CardBattleInteractionService(
+        storage_unit_of_work.card_battle_repo,
+        storage_unit_of_work.user_repo,
+        storage_unit_of_work.deck_repo,
+        storage_unit_of_work.card_repo
+    )
 
 
 # Add all the routes here (see health as example)
@@ -180,6 +198,25 @@ def setup_routes(app: Flask):
     app.register_blueprint(friends, url_prefix="/v1/friends")
     from .routes.wbr import wbr
     app.register_blueprint(wbr, url_prefix="/v1/wbr")
+    from .routes.deck import decks
+    app.register_blueprint(decks, url_prefix="/v1/decks")
+    from .routes.card_battle import card_battle_route
+    app.register_blueprint(card_battle_route, url_prefix="/v1/card-battle")
+
+
+def setup_error_handlers(app: Flask):
+    @app.errorhandler(404)
+    def not_found(e):
+        return json_no_store({"error": "Not Found", "message": str(e)}, 404)
+
+    @app.errorhandler(405)
+    def method_not_allowed(e):
+        return json_no_store({"error": "Method Not Allowed", "message": str(e)}, 405)
+
+    @app.errorhandler(500)
+    def internal_server_error(e):
+        app.logger.error(f"Internal Server Error: {e}")
+        return json_no_store({"error": "Internal Server Error", "message": "An unexpected error occurred."}, 500)
 
 
 ########################
@@ -273,6 +310,7 @@ def create_app(skip_services=None):
     setup_openapi(app)
     setup_oauth(app)
     setup_database(app)
+    setup_error_handlers(app)
     if not skip_services:
         setup_services(app)
         setup_routes(app)

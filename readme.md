@@ -47,7 +47,7 @@ See [AI Usage](ai-usage-protocol.md)
 
 ## Scan Endpoint Quickstart (Docker)
 
-This section shows how to run the backend and call `POST /api/scan` end-to-end (OpenAI recognition + Wikipedia enrichment + German card summary + German card label + DB persistence).
+This section shows how to run the backend and call `POST /v1/scans` end-to-end (OpenAI recognition + Wikipedia enrichment + German card summary + German card label + DB persistence).
 
 ### 1) Configure environment
 
@@ -86,7 +86,7 @@ Wait until backend logs show workers booted and DB tables available.
 ### 3) Create a test user
 
 ```bash
-curl -s -X POST http://127.0.0.1:5000/api/users/create \
+curl -s -X POST http://127.0.0.1:5000/v1/users \
   -H "Content-Type: application/json" \
   -d '{"name":"scan_tester","email":"scan_tester@example.com","password":"Test1234!"}'
 ```
@@ -98,9 +98,9 @@ If user already exists, continue.
 Using `jq`:
 
 ```bash
-TOKEN=$(curl -s -X POST http://127.0.0.1:5000/api/users/login \
+TOKEN=$(curl -s -X POST http://127.0.0.1:5000/v1/users/auth \
   -H "Content-Type: application/json" \
-  -d '{"email":"scan_tester@example.com","password":"Test1234!"}' | jq -r '.token')
+  -d '{"email":"scan_tester@example.com","password":"Test1234!"}' | jq -r '.access_token')
 ```
 
 Quick check:
@@ -123,7 +123,7 @@ This Python variant is portable across Linux and macOS.
 ### 6) Call scan endpoint
 
 ```bash
-curl -s -X POST http://127.0.0.1:5000/api/scan \
+curl -s -X POST http://127.0.0.1:5000/v1/scans \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   --data-binary @/tmp/scan.json
@@ -147,7 +147,7 @@ Expected: `name` contains the German display label and `card_summary` contains t
 
 ### 8) Verify image URL works
 
-Use the `image_reference` returned by `/api/scan`:
+Use the `image_reference` returned by `/v1/scans`:
 
 ```bash
 curl -I "<IMAGE_REFERENCE_FROM_SCAN_RESPONSE>"
@@ -159,8 +159,8 @@ Expected: `HTTP/1.1 200 OK` and `Content-Type` for the stored image type.
 
 This section shows how to test collection endpoints for the authenticated user:
 
-- `GET /api/collections/me`
-- `GET /api/collections/me/{entryId}`
+- `GET /v1/collections/me`
+- `GET /v1/collections/me/{entryId}`
 
 It includes list/search/sort/category-filter behavior. Collection labels come from the saved card name, so scanned objects should appear with the German display label.
 
@@ -173,7 +173,7 @@ docker compose up -d --build backend
 ### 2) Create or reuse test user
 
 ```bash
-curl -s -X POST http://127.0.0.1:5000/api/users/create \
+curl -s -X POST http://127.0.0.1:5000/v1/users \
   -H "Content-Type: application/json" \
   -d '{"name":"coltest","email":"coltest@example.com","password":"Test1234!"}'
 ```
@@ -183,10 +183,10 @@ If user already exists, continue.
 ### 3) Login and export token
 
 ```bash
-TOKEN=$(curl -s -X POST http://127.0.0.1:5000/api/users/login \
+TOKEN=$(curl -s -X POST http://127.0.0.1:5000/v1/users/auth \
   -H "Content-Type: application/json" \
   -d '{"email":"coltest@example.com","password":"Test1234!"}' \
-  | jq -r '.token')
+  | jq -r '.access_token')
 echo ${#TOKEN}
 ```
 
@@ -259,9 +259,9 @@ docker compose exec -T db psql -U postgres -d omnidex -c "
 insert into cards
 (name, card_summary, category, confidence, description, source_title, source_url, alternatives_json, image_key, created_at, user_id)
 values
-('Rose', 'Kurze Zusammenfassung zur Rose', 'Pflanze', 0.93, 'Rose description', 'Rose', 'https://en.wikipedia.org/wiki/Rose', '[]', 'http://127.0.0.1:5000/api/image/cards/' || '$USER_ID' || '/rose.jpeg', now() - interval '3 day', '$USER_ID'),
-('Katze', 'Kurze Zusammenfassung zur Katze', 'Tiere', 0.97, 'Cat description', 'Cat', 'https://en.wikipedia.org/wiki/Cat', '[{\"label\":\"lynx\",\"confidence\":0.31}]', 'http://127.0.0.1:5000/api/image/cards/' || '$USER_ID' || '/cat.jpeg', now() - interval '2 day', '$USER_ID'),
-('Pizza', 'Kurze Zusammenfassung zur Pizza', 'Nahrung', 0.95, 'Pizza description', 'Pizza', 'https://en.wikipedia.org/wiki/Pizza', '[]', 'http://127.0.0.1:5000/api/image/cards/' || '$USER_ID' || '/pizza.jpeg', now() - interval '1 day', '$USER_ID');
+('Rose', 'Kurze Zusammenfassung zur Rose', 'Pflanze', 0.93, 'Rose description', 'Rose', 'https://en.wikipedia.org/wiki/Rose', '[]', 'http://127.0.0.1:5000/v1/images/cards/' || '$USER_ID' || '/rose.jpeg', now() - interval '3 day', '$USER_ID'),
+('Katze', 'Kurze Zusammenfassung zur Katze', 'Tiere', 0.97, 'Cat description', 'Cat', 'https://en.wikipedia.org/wiki/Cat', '[{\"label\":\"lynx\",\"confidence\":0.31}]', 'http://127.0.0.1:5000/v1/images/cards/' || '$USER_ID' || '/cat.jpeg', now() - interval '2 day', '$USER_ID'),
+('Pizza', 'Kurze Zusammenfassung zur Pizza', 'Nahrung', 0.95, 'Pizza description', 'Pizza', 'https://en.wikipedia.org/wiki/Pizza', '[]', 'http://127.0.0.1:5000/v1/images/cards/' || '$USER_ID' || '/pizza.jpeg', now() - interval '1 day', '$USER_ID');
 "
 ```
 
@@ -272,28 +272,28 @@ If you prefer to avoid shell interpolation inside SQL, replace the three `'$USER
 Newest:
 
 ```bash
-curl -s "http://127.0.0.1:5000/api/collections/me?sort=newest" \
+curl -s "http://127.0.0.1:5000/v1/collections/me?sort=newest" \
   -H "Authorization: Bearer $TOKEN" | jq
 ```
 
 Oldest:
 
 ```bash
-curl -s "http://127.0.0.1:5000/api/collections/me?sort=oldest" \
+curl -s "http://127.0.0.1:5000/v1/collections/me?sort=oldest" \
   -H "Authorization: Bearer $TOKEN" | jq
 ```
 
 Search:
 
 ```bash
-curl -s "http://127.0.0.1:5000/api/collections/me?query=Katze" \
+curl -s "http://127.0.0.1:5000/v1/collections/me?query=Katze" \
   -H "Authorization: Bearer $TOKEN" | jq
 ```
 
 Category filter (uses stored category only, no mapping logic):
 
 ```bash
-curl -s "http://127.0.0.1:5000/api/collections/me?category=Pflanze" \
+curl -s "http://127.0.0.1:5000/v1/collections/me?category=Pflanze" \
   -H "Authorization: Bearer $TOKEN" | jq
 ```
 
@@ -306,21 +306,21 @@ docker compose up -d --build backend
 ### 7) Test detail endpoint
 
 ```bash
-ENTRY_ID=$(curl -s "http://127.0.0.1:5000/api/collections/me?sort=newest" \
+ENTRY_ID=$(curl -s "http://127.0.0.1:5000/v1/collections/me?sort=newest" \
   -H "Authorization: Bearer $TOKEN" \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['items'][0]['id'])")
 
-curl -s "http://127.0.0.1:5000/api/collections/me/$ENTRY_ID" \
+curl -s "http://127.0.0.1:5000/v1/collections/me/$ENTRY_ID" \
   -H "Authorization: Bearer $TOKEN" | jq
 ```
 
 ### 8) Negative checks (expected `400`)
 
 ```bash
-curl -s -i "http://127.0.0.1:5000/api/collections/me?sort=abc" \
+curl -s -i "http://127.0.0.1:5000/v1/collections/me?sort=abc" \
   -H "Authorization: Bearer $TOKEN"
 
-curl -s -i "http://127.0.0.1:5000/api/collections/me?category=ANIMAL" \
+curl -s -i "http://127.0.0.1:5000/v1/collections/me?category=ANIMAL" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -338,9 +338,9 @@ Before running the quickstarts, make sure you have:
 Common issues:
 
 - If a route returns `404` after code changes, rebuild the backend container with `docker compose up -d --build backend`.
-- If login works but `/api/scan` returns `502`, the request reached the backend and the issue is usually in the LISA response format or in LISA credentials.
+- If login works but `/v1/scans` returns `502`, the request reached the backend and the issue is usually in the LISA response format or in LISA credentials.
 - If scan works but `label` or `card_summary` is not German, check that the backend container was rebuilt and that `LISA_API_KEY`, `LISA_SUMMARY_MODEL` and `LISA_LABEL_TRANSLATION_MODEL` are available in the container.
-- If `/api/collections/me` shows no results, check that the inserted cards belong to the same user you logged in with.
+- If `/v1/collections/me` shows no results, check that the inserted cards belong to the same user you logged in with.
 - If you use a different shell or OS, prefer the Python base64 command shown above instead of GNU-specific `base64 -w 0`.
 
 ## Caching Smoke Tests (Docker)
@@ -418,11 +418,11 @@ Create and log in a test user:
 ```bash
 EMAIL="cache_tester_$(date +%s)@example.com"
 
-curl -s -X POST http://127.0.0.1:5000/v1/users/create \
+curl -s -X POST http://127.0.0.1:5000/v1/users \
   -H "Content-Type: application/json" \
   -d "{\"name\":\"Cache Tester\",\"email\":\"$EMAIL\",\"password\":\"test12345\"}" | jq
 
-TOKEN=$(curl -s -X POST http://127.0.0.1:5000/v1/users/login \
+TOKEN=$(curl -s -X POST http://127.0.0.1:5000/v1/users/auth \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"$EMAIL\",\"password\":\"test12345\"}" | jq -r .access_token)
 

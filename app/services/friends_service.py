@@ -124,6 +124,10 @@ class FriendsService:
                 "description": c.card_summary,
                 "category": c.category,
                 "entryDate": c.created_at.isoformat() if c.created_at else None,
+                "battleType": c.battle_type.value,
+                "attack": c.attack,
+                "health": c.health,
+                "cost": c.cost,
             }
             for c in cards
         ]

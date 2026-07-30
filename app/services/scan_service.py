@@ -34,7 +34,8 @@ class ScanService:
             category_service=None,
             label_translation_service=None,
             achievement_service=None,
-            moderation_repo=None
+            moderation_repo=None,
+            card_stats_service=None
     ):
         self.recognition_service = recognition_service
         self.wiki_service = wiki_service
@@ -46,6 +47,7 @@ class ScanService:
         self.label_translation_service = label_translation_service or LabelTranslationService()
         self.achievement_service = achievement_service
         self.moderation_repo = moderation_repo
+        self.card_stats_service = card_stats_service
 
     def create_scan(self, user_id: int, image_input: bytes) -> ScanResultDto | None:
         if user_id <= 0:
@@ -66,6 +68,10 @@ class ScanService:
         card_summary, summary_generated_by_ai = self._get_card_summary(recognition_result.label, description)
         display_label = recognition_result.label
 
+        stats = {"battle_type": "fighter", "attack": 10, "health": 10, "cost": 1}
+        if self.card_stats_service:
+            stats = self.card_stats_service.classify_card(recognition_result.label, description)
+
         card_id, image_reference, created_at = self._persist_card(
             user_id=user_id,
             card_label=display_label,
@@ -80,6 +86,10 @@ class ScanService:
                 {"label": alternative.label, "confidence": alternative.confidence}
                 for alternative in recognition_result.alternatives
             ],
+            battle_type=stats["battle_type"].value if hasattr(stats["battle_type"], "value") else stats["battle_type"],
+            attack=stats["attack"],
+            health=stats["health"],
+            cost=stats["cost"],
         )
 
         if self.achievement_service is not None:
@@ -100,6 +110,10 @@ class ScanService:
             source_url=self._build_wikipedia_url(recognition_result.label) if knowledge_enriched else None,
             knowledge_enriched=knowledge_enriched,
             summary_generated_by_ai=summary_generated_by_ai,
+            battle_type=stats["battle_type"],
+            attack=stats["attack"],
+            health=stats["health"],
+            cost=stats["cost"],
             id=card_id,
             image_reference=image_reference,
             created_at=created_at,
@@ -189,6 +203,10 @@ class ScanService:
             source_url: str | None,
             category: str,
             alternatives: list[dict],
+            battle_type: str | None = None,
+            attack: int | None = None,
+            health: int | None = None,
+            cost: int | None = None,
     ) -> tuple[int, str, str | None]:
         key: str | None = None
         try:
@@ -212,6 +230,10 @@ class ScanService:
                 source_title=source_title,
                 source_url=source_url,
                 alternatives_json=json.dumps(alternatives),
+                battle_type=battle_type,
+                attack=attack,
+                health=health,
+                cost=cost,
             )
             return card_id, image_reference, created_at
         except Exception as exc:

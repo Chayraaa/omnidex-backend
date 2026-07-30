@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
 
+from app.domain_models.card import BattleType
+
 
 @dataclass
 class CollectionEntrySummaryDto:
@@ -10,6 +12,10 @@ class CollectionEntrySummaryDto:
     image_url: str | None
     created_at: str | None
     confidence: float | None
+    battle_type: BattleType = BattleType.FIGHTER
+    attack: int = 0
+    health: int = 0
+    cost: int = 0
 
     def to_dict(self) -> dict:
         return {
@@ -20,6 +26,10 @@ class CollectionEntrySummaryDto:
             "image_url": self.image_url,
             "created_at": self.created_at,
             "confidence": self.confidence,
+            "battle_type": self.battle_type.value,
+            "attack": self.attack,
+            "health": self.health,
+            "cost": self.cost,
         }
 
 
@@ -36,6 +46,10 @@ class CollectionEntryDetailDto:
     alternatives: list[dict] = field(default_factory=list)
     image_url: str | None = None
     created_at: str | None = None
+    battle_type: BattleType = BattleType.FIGHTER
+    attack: int = 0
+    health: int = 0
+    cost: int = 0
 
     def to_dict(self) -> dict:
         return {
@@ -50,4 +64,8 @@ class CollectionEntryDetailDto:
             "alternatives": self.alternatives,
             "image_url": self.image_url,
             "created_at": self.created_at,
+            "battle_type": self.battle_type.value,
+            "attack": self.attack,
+            "health": self.health,
+            "cost": self.cost,
         }

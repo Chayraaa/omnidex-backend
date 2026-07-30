@@ -10,6 +10,8 @@ from app.repositories.interfaces.storage.friends_repo_protocol import FriendsRep
 from app.repositories.interfaces.storage.notification_repo_protocol import NotificationRepoProtocol
 from app.repositories.interfaces.storage.achievement_repo_protocol import AchievementRepoProtocol
 from app.repositories.interfaces.storage.user_achievements_repo_protocol import UserAchievementRepoProtocol
+from app.repositories.interfaces.storage.deck_repo_protocol import DeckRepoProtocol
+from app.repositories.interfaces.storage.card_battle_repo_interface import CardBattleGameRepoInterface
 from app.repositories.storage.minio_image_storage import MinioImageStorage
 from app.repositories.storage.sql_image_repo import SqlImageRepo
 from app.repositories.storage.sql_card_repo import SqlCardRepo
@@ -19,6 +21,8 @@ from app.repositories.storage.sql_user_repo import SqlUserRepo
 from app.repositories.storage.sql_friends_repo import SqlFriendsRepo
 from app.repositories.storage.sql_achievement_repo import SqlAchievementRepo
 from app.repositories.storage.sql_user_achievements_repo import SqlUserAchievementRepo
+from app.repositories.storage.sql_deck_repo import SqlDeckRepo
+from app.repositories.storage.sql_card_battle_repo import SqlCardBattleRepo
 
 
 # This is a unit of work. It groups repositories that depend on another.
@@ -35,4 +39,6 @@ class SqlUnitOfWork:
         self.collection_repo: CollectionRepoProtocol = SqlCollectionRepo()
         self.achievement_repo: AchievementRepoProtocol = SqlAchievementRepo()
         self.user_achievement_repo: UserAchievementRepoProtocol = SqlUserAchievementRepo()
+        self.deck_repo: DeckRepoProtocol = SqlDeckRepo()
+        self.card_battle_repo: CardBattleGameRepoInterface = SqlCardBattleRepo()
         self.moderation_repo: ModerationProtocol = ModerationRepo()

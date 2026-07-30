@@ -36,19 +36,51 @@ class UserModel(db.Model):
 
     sent_friendships: Mapped[list["FriendsModel"]] = relationship(
         "FriendsModel",
+        primaryjoin="UserModel.id == FriendsModel.user_id",
         foreign_keys="FriendsModel.user_id",
         back_populates="user",
+        cascade="all, delete-orphan",
     )
 
     received_friendships: Mapped[list["FriendsModel"]] = relationship(
         "FriendsModel",
+        primaryjoin="UserModel.id == FriendsModel.friend_id",
         foreign_keys="FriendsModel.friend_id",
         back_populates="friend",
+        cascade="all, delete",
     )
 
     wbr: Mapped[list["WBRModel"]] = relationship(
         "WBRModel",
         back_populates="user",
         cascade="all, delete-orphan"
+    )
+
+    cardBattleGamesP1: Mapped[list["CardBattleGameModel"]] = relationship(
+        "CardBattleGameModel",
+        primaryjoin="UserModel.id == CardBattleGameModel.player1_id",
+        foreign_keys="CardBattleGameModel.player1_id",
+        back_populates="player1",
+        cascade="all, delete-orphan"
+    )
+
+    cardBattleGamesP2: Mapped[list["CardBattleGameModel"]] = relationship(
+        "CardBattleGameModel",
+        primaryjoin="UserModel.id == CardBattleGameModel.player2_id",
+        foreign_keys="CardBattleGameModel.player2_id",
+        back_populates="player2",
+        cascade="all, delete-orphan"
+    )
+
+    decks: Mapped[list["DeckModel"]] = relationship(
+        "DeckModel",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
+    notifications: Mapped[list["NotificationModel"]] = relationship(
+        "NotificationModel",
+        back_populates="user",
+        cascade="all, delete-orphan",
     )
 

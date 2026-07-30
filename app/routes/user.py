@@ -9,6 +9,7 @@ from app.http_cache import add_no_store, json_no_store
 users = Blueprint("users", __name__)
 
 
+@users.route("/create", methods=["POST"])
 @users.route("", methods=["POST"])
 @validate
 def create_user():
@@ -27,6 +28,7 @@ def create_user():
 
 # Handles the login. It checks password and username, returns a jwt token which is subsequently checked in the
 # login_required decorator.
+@users.route("/login", methods=["POST"])
 @users.route("/auth", methods=["POST"])
 @validate
 def login():

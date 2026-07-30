@@ -12,12 +12,14 @@ class FriendsModel(db.Model):
 
     user: Mapped["UserModel"] = relationship(
         "UserModel",
+        primaryjoin="FriendsModel.user_id == UserModel.id",
         foreign_keys=[user_id],
         back_populates="sent_friendships",
     )
 
     friend: Mapped["UserModel"] = relationship(
         "UserModel",
+        primaryjoin="FriendsModel.friend_id == UserModel.id",
         foreign_keys=[friend_id],
         back_populates="received_friendships",
     )

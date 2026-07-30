@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from app.domain_models.card import BattleType
 
 
 @dataclass
@@ -26,6 +27,10 @@ class ScanResultDto:
     source_url: str | None = None
     knowledge_enriched: bool = False
     summary_generated_by_ai: bool = False
+    battle_type: BattleType = BattleType.FIGHTER
+    attack: int = 10
+    health: int = 10
+    cost: int = 1
     id: int | None = None
     image_reference: str | None = None
     created_at: str | None = None
@@ -45,5 +50,9 @@ class ScanResultDto:
             "image_reference": self.image_reference,
             "knowledge_enriched": self.knowledge_enriched,
             "summary_generated_by_ai": self.summary_generated_by_ai,
+            "battle_type": self.battle_type.value if hasattr(self.battle_type, "value") else self.battle_type,
+            "attack": self.attack,
+            "health": self.health,
+            "cost": self.cost,
             "created_at": self.created_at,
         }

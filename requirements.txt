@@ -12,3 +12,4 @@ requests
 authlib
 Pillow
 Flask-Migrate
+python-dotenv

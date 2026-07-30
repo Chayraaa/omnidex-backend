@@ -4,6 +4,7 @@ from app.domain_models.collection_entry_dto import (
     CollectionEntrySummaryDto,
     CollectionEntryDetailDto,
 )
+from app.domain_models.card import BattleType
 from app.repositories.interfaces.storage.collection_repo_protocol import CollectionRepoProtocol
 from app.services.collection_errors import (
     CollectionEntryNotFound,
@@ -63,6 +64,10 @@ class CollectionService:
                 image_url=self._build_image_url(card.image_key),
                 created_at=card.created_at.isoformat() if card.created_at else None,
                 confidence=card.confidence,
+                battle_type=BattleType(card.battle_type) if card.battle_type else BattleType.FIGHTER,
+                attack=card.attack,
+                health=card.health,
+                cost=card.cost,
             )
             for card in cards
         ]
@@ -127,6 +132,10 @@ class CollectionService:
             alternatives=self._parse_alternatives(card.alternatives_json),
             image_url=self._build_image_url(card.image_key),
             created_at=card.created_at.isoformat() if card.created_at else None,
+            battle_type=BattleType(card.battle_type) if card.battle_type else BattleType.FIGHTER,
+            attack=card.attack,
+            health=card.health,
+            cost=card.cost,
         )
 
     @classmethod
