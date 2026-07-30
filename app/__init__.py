@@ -161,14 +161,16 @@ def setup_services(app: Flask):
     app.google_oauth_service = GoogleOauthService(storage_unit_of_work.user_repo,
                                                   storage_unit_of_work.refresh_token_repo,
                                                   app.achievement_service)
+    openai_wbr_adapter = OpenAIWBRApiClient()
+    app.wbr_service = WhatBeatsRock(storage_unit_of_work.user_repo, openai_wbr_adapter)
     app.friends_service = FriendsService(
         storage_unit_of_work.friends_repo,
         storage_unit_of_work.user_repo,
         storage_unit_of_work.card_repo,
-        base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000")
+        base_url=os.environ.get("BASE_URL", "http://127.0.0.1:5000"),
+        wbr_service=app.wbr_service,
+        card_battle_repo=storage_unit_of_work.card_battle_repo,
     )
-    openai_wbr_adapter = OpenAIWBRApiClient()
-    app.wbr_service = WhatBeatsRock(storage_unit_of_work.user_repo, openai_wbr_adapter)
     app.deck_service = DeckService(storage_unit_of_work.deck_repo)
     app.card_battle_interaction_service = CardBattleInteractionService(
         storage_unit_of_work.card_battle_repo,

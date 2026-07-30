@@ -23,3 +23,6 @@ class CardBattleGameRepoInterface(Protocol):
 
     def delete_card_battle_game(self, game: CardBattleGame) -> None:
         ...
+
+    def get_games_by_player_ids(self, player_ids: list[int]) -> list[CardBattleGame]:
+        ...

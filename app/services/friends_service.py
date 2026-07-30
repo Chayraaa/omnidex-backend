@@ -2,6 +2,8 @@ from app.domain_models.user import User
 from app.repositories.interfaces.storage.friends_repo_protocol import FriendsRepoProtocol
 from app.repositories.interfaces.storage.user_repo_protocol import UserRepoProtocol
 from app.repositories.interfaces.storage.card_repo_protocol import CardRepoProtocol
+from app.repositories.interfaces.storage.card_battle_repo_interface import CardBattleGameRepoInterface
+from app.repositories.interfaces.external.what_beats_rock_protocol import WhatBeatsRockProtocol
 from enum import Enum
 
 
@@ -12,11 +14,13 @@ class FriendshipStatus(str, Enum):
 
 
 class FriendsService:
-    def __init__(self, friends_repo: FriendsRepoProtocol, user_repo: UserRepoProtocol, card_repo: CardRepoProtocol, base_url: str):
+    def __init__(self, friends_repo: FriendsRepoProtocol, user_repo: UserRepoProtocol, card_repo: CardRepoProtocol, base_url: str, wbr_service: WhatBeatsRockProtocol = None, card_battle_repo: CardBattleGameRepoInterface = None):
         self.friends_repo = friends_repo
         self.user_repo = user_repo
         self.card_repo = card_repo
         self.base_url = base_url.rstrip("/")
+        self.wbr_service = wbr_service
+        self.card_battle_repo = card_battle_repo
 
     # SEND FRIEND REQUEST
     def create_friend_request(self, sender: User, friend_code: str) -> bool:
@@ -113,10 +117,12 @@ class FriendsService:
         if not friend_ids:
             return []
 
-        cards = self.card_repo.get_cards_by_friends(friend_ids)[:50]
+        feed = []
 
-        return [
-            {
+        cards = self.card_repo.get_cards_by_friends(friend_ids)[:50]
+        for c in cards:
+            feed.append({
+                "type": "card_discovered",
                 "id": c.id,
                 "firstDiscoveredUserId": c.user_id,
                 "name": c.name,
@@ -128,6 +134,40 @@ class FriendsService:
                 "attack": c.attack,
                 "health": c.health,
                 "cost": c.cost,
-            }
-            for c in cards
-        ]
+            })
+
+        if self.wbr_service:
+            wbr_stats = self.wbr_service.get_wbr_stats_for_user_ids(friend_ids)
+            for stat in wbr_stats:
+                feed.append({
+                    "type": "wbr_played",
+                    "userId": stat["userId"],
+                    "streak": stat["streak"],
+                    "highscore": stat["highscore"],
+                })
+
+        if self.card_battle_repo:
+            games = self.card_battle_repo.get_games_by_player_ids(friend_ids)
+            for game in games:
+                gs = game.game_state
+                if not gs.p1_has_won and not gs.p2_has_won:
+                    continue
+                for friend_id in friend_ids:
+                    if game.player1_id == friend_id:
+                        feed.append({
+                            "type": "card_battle_result",
+                            "gameId": game.id,
+                            "userId": friend_id,
+                            "opponentId": game.player2_id,
+                            "won": gs.p1_has_won,
+                        })
+                    elif game.player2_id == friend_id:
+                        feed.append({
+                            "type": "card_battle_result",
+                            "gameId": game.id,
+                            "userId": friend_id,
+                            "opponentId": game.player1_id,
+                            "won": gs.p2_has_won,
+                        })
+
+        return feed

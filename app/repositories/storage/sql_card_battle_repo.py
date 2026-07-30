@@ -71,3 +71,16 @@ class SqlCardBattleRepo:
         if model:
             self.session.delete(model)
             self.session.commit()
+
+    def get_games_by_player_ids(self, player_ids: list[int]) -> list[CardBattleGame]:
+        models = self.session.query(CardBattleGameModel).filter(
+            (CardBattleGameModel.player1_id.in_(player_ids)) |
+            (CardBattleGameModel.player2_id.in_(player_ids))
+        ).all()
+        return [CardBattleGame(
+            id=m.id,
+            name=m.name,
+            player1_id=m.player1_id,
+            player2_id=m.player2_id,
+            game_state=GameState.from_json(m.game_state),
+        ) for m in models]

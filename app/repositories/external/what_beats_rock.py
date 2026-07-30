@@ -76,3 +76,11 @@ class WhatBeatsRock(WhatBeatsRockProtocol):
         wbr_model.history = None
         db.session.commit()
 
+    def get_wbr_stats_for_user_ids(self, user_ids: list[int]) -> list[dict]:
+        models = db.session.query(WBRModel).filter(WBRModel.user_id.in_(user_ids)).all()
+        return [
+            {"userId": m.user_id, "streak": m.streak, "highscore": m.highscore}
+            for m in models
+            if m.streak > 0 or m.highscore > 0
+        ]
+
