@@ -3,6 +3,7 @@ import random
 from app.repositories.interfaces.storage.card_battle_repo_interface import CardBattleGameRepoInterface
 from app.repositories.interfaces.storage.card_repo_protocol import CardRepoProtocol
 from app.repositories.interfaces.storage.deck_repo_protocol import DeckRepoProtocol
+from app.repositories.interfaces.storage.friends_repo_protocol import FriendsRepoProtocol
 from app.repositories.interfaces.storage.user_repo_protocol import UserRepoProtocol
 from app.services.games.card_battle import card_battle, card_battle_ai
 from app.services.games.card_battle.event_publisher import game_event_publisher
@@ -13,11 +14,12 @@ logger = logging.getLogger(__name__)
 
 class CardBattleInteractionService:
     def __init__(self, card_battle_repo: CardBattleGameRepoInterface, user_repo: UserRepoProtocol,
-                 deck_repo: DeckRepoProtocol, card_repo: CardRepoProtocol):
+                 deck_repo: DeckRepoProtocol, card_repo: CardRepoProtocol, friends_repo: FriendsRepoProtocol):
         self.card_battle_repo = card_battle_repo
         self.user_repo = user_repo
         self.deck_repo = deck_repo
         self.card_repo = card_repo
+        self.friends_repo = friends_repo
 
     def create_lobby(self, player1_id: int | None, player2_id: int | None, name: str = "Card Battle"):
         user1 = self.user_repo.get_user(player1_id) if player1_id is not None else None
@@ -36,11 +38,14 @@ class CardBattleInteractionService:
 
     def _get_user_deck_cards(self, user_id: int | None, opponent_id: int | None = None):
         if user_id is None:
-            # Generate AI deck based on opponent's cards
+            # Generate AI deck based on opponent's cards and their friends' cards
             if opponent_id is None:
                 return []
-            
+
             all_cards = self.card_repo.get_all_by_user(opponent_id)
+            friend_ids = self.friends_repo.get_friend_ids(opponent_id)
+            if friend_ids:
+                all_cards = all_cards + self.card_repo.get_cards_by_friends(friend_ids)
             if not all_cards:
                 return []
             

@@ -174,7 +174,8 @@ def setup_services(app: Flask):
         storage_unit_of_work.card_battle_repo,
         storage_unit_of_work.user_repo,
         storage_unit_of_work.deck_repo,
-        storage_unit_of_work.card_repo
+        storage_unit_of_work.card_repo,
+        storage_unit_of_work.friends_repo
     )
 
 
