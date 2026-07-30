@@ -36,3 +36,11 @@ class SqlUserRepo:
         db_user.email = user.email
         db.session.commit()
         return True
+
+    def delete_user(self, user_id: int) -> bool:
+        db_user = db.session.get(UserModel, user_id)
+        if not db_user:
+            return False
+        db.session.delete(db_user)
+        db.session.commit()
+        return True

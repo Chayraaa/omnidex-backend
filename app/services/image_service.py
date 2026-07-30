@@ -15,13 +15,20 @@ def base64_to_binary_io(data_url: str):
 
 
 class ImageService:
-    def __init__(self, storage: ImageStorageProtocol, image_repo: ImageRepoProtocol, base_url: str = "http://127.0.0.1:5000", image_path: str = "v1/imags"):
+    def __init__(self, storage: ImageStorageProtocol, image_repo: ImageRepoProtocol, base_url: str = "http://127.0.0.1:5000", image_path: str = "v1/images"):
         self.storage = storage
         self.image_repo = image_repo
         self.base_url = base_url.rstrip("/")
         self.image_path = image_path.lstrip("/").rstrip("/")
 
     def save_image(self, user: User, image_base64: str, is_profile_picture: bool = False) -> bool:
+        if is_profile_picture and user.profile_picture_key:
+            old_key = self._extract_minio_key(user.profile_picture_key)
+            if old_key:
+                try:
+                    self.storage.delete_image(old_key)
+                except Exception:
+                    pass
         extension = _infer_data_url_extension(image_base64)
         key = f"{'profile_pictures' if is_profile_picture else 'cards'}/{user.id}/{uuid4()}.{extension}"
         converted_image: BinaryIO = base64_to_binary_io(image_base64)
@@ -29,6 +36,30 @@ class ImageService:
         if is_profile_picture:
             self.image_repo.save_user_image(f"{self.base_url}/{self.image_path}/{key}", user.id)
         return True
+
+    def delete_user_images(self, user: User) -> None:
+        if user.profile_picture_key:
+            minio_key = self._extract_minio_key(user.profile_picture_key)
+            if minio_key:
+                try:
+                    self.storage.delete_image(minio_key)
+                except Exception:
+                    pass
+        for key in self.image_repo.get_card_keys_by_user_id(user.id):
+            minio_key = self._extract_minio_key(key)
+            if minio_key:
+                try:
+                    self.storage.delete_image(minio_key)
+                except Exception:
+                    pass
+
+    def _extract_minio_key(self, url: str) -> str | None:
+        prefix = f"{self.base_url}/{self.image_path}/"
+        if url.startswith(prefix):
+            return url[len(prefix):]
+        if not url.startswith("http://") and not url.startswith("https://"):
+            return url.lstrip("/")
+        return None
 
     def get_user_image_url(self, user: User) -> str:
         if not self.image_repo.has_profile_picture(user.id):

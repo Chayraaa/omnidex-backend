@@ -41,7 +41,8 @@ class GoogleOauthService:
         if not user or user.oauth != "google":
             return None
 
-        user.profile_picture_key = picture_url
+        if not user.profile_picture_key:
+            user.profile_picture_key = picture_url
 
         self.user_repo.update_user(user)
 

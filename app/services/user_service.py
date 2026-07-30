@@ -45,6 +45,9 @@ class UserService:
     def get_user_by_friend_code(self, friend_code: str) -> User | None:
         return self.repo.get_user_by_friend_code(friend_code)
 
+    def delete_user(self, user_id: int) -> bool:
+        return self.repo.delete_user(user_id)
+
     def generate_friend_code(self) -> str:
         while True:
 

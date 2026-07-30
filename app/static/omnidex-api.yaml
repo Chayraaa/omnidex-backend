@@ -815,6 +815,80 @@ paths:
         "500":
           description: Internal server error
 
+  /v1/users/me/username:
+    patch:
+      summary: Update username
+      description: Updates the display name of the authenticated user. Works for both local and Google accounts.
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  example: Alice
+      responses:
+        "200":
+          description: Username updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Username updated successfully.
+        "400":
+          description: Invalid input
+        "401":
+          description: Unauthorized
+
+  /v1/users/me:
+    delete:
+      summary: Delete account
+      description: |
+        Permanently deletes the authenticated user's account and all associated data (cards, decks, friends, etc.)
+        and removes all stored images from MinIO.
+        Local accounts must provide their password. Google accounts require only the bearer token.
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  description: Required for local accounts. Not needed for Google accounts.
+                  example: securePassword123
+      responses:
+        "200":
+          description: Account deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Account deleted successfully.
+        "400":
+          description: Password required for local accounts
+        "401":
+          description: Invalid password or unauthorized
+
   /v1/users/auth:
     post:
       summary: Login user

@@ -4,6 +4,7 @@ from flask import Blueprint, request, current_app, url_for, redirect
 from app import validate, login_required
 from app.domain_models.user import User
 from app.http_cache import add_no_store, json_no_store
+from app.services.password_service import PasswordService
 
 # This route handles user creation, modification, deletion, login, and logout
 users = Blueprint("users", __name__)
@@ -89,6 +90,37 @@ def google_callback():
         f"&refreshToken={refresh}"
         f"&user_id={user_id}"
     )
+
+
+@users.route("/me/username", methods=["PATCH"])
+@validate
+@login_required
+def update_username(user: User):
+    data = request.get_json()
+    name = (data.get("name") or "").strip()
+    if not name:
+        return json_no_store({"message": "Name cannot be empty."}, 400)
+    user.name = name
+    current_app.user_service.update_user(user)
+    return json_no_store({"message": "Username updated successfully."}, 200)
+
+
+@users.route("/me", methods=["DELETE"])
+@validate
+@login_required
+def delete_account(user: User):
+    data = request.get_json() or {}
+
+    if user.oauth == "local":
+        password = data.get("password")
+        if not password:
+            return json_no_store({"message": "Password is required."}, 400)
+        if not PasswordService.verify_password(password, user.hashed_password):
+            return json_no_store({"message": "Invalid password."}, 401)
+
+    current_app.image_service.delete_user_images(user)
+    current_app.user_service.delete_user(user.id)
+    return json_no_store({"message": "Account deleted successfully."}, 200)
 
 
 @users.route("/profile-pictures", methods=["POST"])
