@@ -57,6 +57,7 @@ class GameState:
     p1_has_won: bool
     p2_has_won: bool
     p1_passed_first: bool = True
+    last_action: dict | None = None
 
     def to_json(self) -> str:
         return json.dumps(self.to_dict())
@@ -120,6 +121,7 @@ class GameState:
             p1_has_won=d["p1_has_won"],
             p2_has_won=d["p2_has_won"],
             p1_passed_first=d.get("p1_passed_first", True),
+            last_action=d.get("last_action"),
         )
 
     def __str__(self):
@@ -311,19 +313,35 @@ def play_card(game_state: GameState, card: Card, player: int, equip_to: CardCont
             equip_to.health += card.health
             game_state.p2_hand.remove(card)
 
+    game_state.last_action = {
+        "action": "play_card",
+        "player": player,
+        "card": card,
+        "equipped_to": equip_to,
+    }
     return game_state
 
 def end_turn(game_state: GameState, player: int) -> GameState:
     if not _is_player_turn(game_state, player):
         return game_state
     if player == 1:
-        game_state.p1_turn = False
         game_state.p1_fighter_played = False
         game_state.p2_money += 2
+        # Only hand over the turn if opponent hasn't already passed
+        if not game_state.p2_passed:
+            game_state.p1_turn = False
     else:
-        game_state.p1_turn = True
         game_state.p2_fighter_played = False
         game_state.p1_money += 2
+        # Only hand over the turn if opponent hasn't already passed
+        if not game_state.p1_passed:
+            game_state.p1_turn = True
+    game_state.last_action = {
+        "action": "end_turn",
+        "player": player,
+        "card": None,
+        "equipped_to": None,
+    }
     return game_state
 
 def sell_card(game_state: GameState, card: Card, player: int) -> GameState:
@@ -337,6 +355,12 @@ def sell_card(game_state: GameState, card: Card, player: int) -> GameState:
         game_state.p2_hand.remove(card)
         game_state.p2_grave.append(card)
         game_state.p2_money += max(card.cost - 1, 1)
+    game_state.last_action = {
+        "action": "sell_card",
+        "player": player,
+        "card": card,
+        "equipped_to": None,
+    }
     return game_state
 
 def pass_round(game_state: GameState, player: int) -> GameState:
@@ -358,6 +382,13 @@ def pass_round(game_state: GameState, player: int) -> GameState:
         game_state.p2_passed = True
         game_state.p2_fighter_played = False
 
+    game_state.last_action = {
+        "action": "pass_round",
+        "player": player,
+        "card": None,
+        "equipped_to": None,
+    }
+
     if game_state.p1_passed and game_state.p2_passed:
         game_state = _evaluate(game_state)
         game_state = _check_for_winner(game_state)
@@ -367,5 +398,11 @@ def pass_round(game_state: GameState, player: int) -> GameState:
         game_state = _draw(game_state)
         game_state.p1_money += 2
         game_state.p2_money += 2
+        game_state.last_action = {
+            "action": "combat_resolved",
+            "player": None,
+            "card": None,
+            "equipped_to": None,
+        }
 
     return game_state

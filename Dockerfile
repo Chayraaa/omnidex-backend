@@ -14,4 +14,4 @@ RUN pip install -r requirements.txt
 
 COPY . .
 # If in memory is used as storage - change 4 to 1
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "run:app"]
+CMD ["gunicorn", "--worker-class", "gevent", "-w", "4", "--timeout", "0", "-b", "0.0.0.0:5000", "run:app"]

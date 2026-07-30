@@ -670,6 +670,46 @@ components:
           type: boolean
         p2_has_won:
           type: boolean
+        p1_passed_first:
+          type: boolean
+        last_action:
+          nullable: true
+          type: object
+          description: >
+            Describes the most recent action taken in the game.
+            Set on every state change; null only at game start before any action.
+          properties:
+            action:
+              type: string
+              enum:
+                - play_card
+                - sell_card
+                - end_turn
+                - pass_round
+                - combat_resolved
+              description: >
+                Type of action performed.
+                "combat_resolved" is emitted after both players pass and combat is evaluated.
+            player:
+              type: integer
+              nullable: true
+              description: >
+                The player who performed the action (1 or 2).
+                Null for "combat_resolved" since it affects both players.
+            card:
+              nullable: true
+              allOf:
+                - $ref: '#/components/schemas/card'
+              description: >
+                The card involved in the action.
+                Present for "play_card" and "sell_card"; null for "end_turn", "pass_round", "combat_resolved".
+            equipped_to:
+              nullable: true
+              allOf:
+                - $ref: '#/components/schemas/cardContainer'
+              description: >
+                The fighter the card was equipped onto.
+                Present only for "play_card" when an equipment card was played; null otherwise.
 
     cardBattlePlayRequest:
       type: object

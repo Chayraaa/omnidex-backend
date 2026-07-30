@@ -33,6 +33,7 @@ end_turn, pass_round, _evaluate, _check_for_winner) actually lives.
 from __future__ import annotations
 
 import copy
+import logging
 import time
 from typing import NamedTuple, Optional
 
@@ -48,6 +49,8 @@ from app.services.games.card_battle.card_battle import (
     _evaluate,
     _check_for_winner,
 )
+
+logger = logging.getLogger(__name__)
 
 # --- tunable weights for the evaluation function -----------------------
 
@@ -217,26 +220,33 @@ def _apply_plan(state: GameState, player: int, plan: Plan, hand_snapshot: list[C
         hand = _hand(state, player)
         if live_index >= len(hand):
             # Defensive: shouldn't happen if the plan was built correctly.
+            logger.debug(f"[AI] _apply_plan: live_index {live_index} out of bounds (hand={len(hand)}), skipping")
             continue
         card = hand[live_index]
 
         if action.kind == "skip":
+            logger.debug(f"[AI] _apply_plan: player {player} skipping '{card.name}'")
             continue
         if action.kind == "sell":
+            logger.debug(f"[AI] _apply_plan: player {player} selling '{card.name}'")
             state = sell_card(state, card, player)
             removed_before += 1
         elif action.kind == "play_fighter":
+            logger.debug(f"[AI] _apply_plan: player {player} playing fighter '{card.name}' (cost={card.cost})")
             state = play_card(state, card, player)
             removed_before += 1
         elif action.kind == "play_equipment":
             board = _board(state, player)
             if action.target_pos is None or action.target_pos >= len(board):
+                logger.debug(f"[AI] _apply_plan: equipment target {action.target_pos} invalid, skipping")
                 continue
             target = board[action.target_pos]
+            logger.debug(f"[AI] _apply_plan: player {player} equipping '{card.name}' to slot {action.target_pos}")
             state = play_card(state, card, player, equip_to=target)
             removed_before += 1
-        
+
         if on_step:
+            logger.debug(f"[AI] _apply_plan: broadcasting step, sleeping 3s...")
             on_step(state)
             time.sleep(3)
 
@@ -286,21 +296,35 @@ def take_ai_turn(game_state: GameState, player: int = 2, on_step=None) -> GameSt
     turn. Returns the (mutated) game_state.
     """
     hand_snapshot = list(_hand(game_state, player))
+    logger.debug(f"[AI] take_ai_turn: player {player}, hand_size={len(hand_snapshot)}, "
+                 f"money={_money(game_state, player)}, board_size={len(_board(game_state, player))}")
+
     if not hand_snapshot:
+        logger.debug(f"[AI] take_ai_turn: empty hand, calling _decide_pass_or_end")
         state = _decide_pass_or_end(game_state, player)
+        logger.debug(f"[AI] take_ai_turn: empty hand result — "
+                     f"p1_passed={state.p1_passed}, p2_passed={state.p2_passed}, p1_turn={state.p1_turn}")
         if on_step:
             on_step(state)
         return state
 
     search_root = copy.deepcopy(game_state)
+    logger.debug(f"[AI] take_ai_turn: starting search for player {player}...")
     plan = _search(search_root, player, hand_snapshot, pos=0, removed_before=0)
+    non_skip = [a for a in plan.actions if a.kind != "skip"]
+    logger.debug(f"[AI] take_ai_turn: search done — score={plan.score:.2f}, "
+                 f"{len(non_skip)} non-skip actions, sleeping 3s before executing")
 
     time.sleep(3)
     game_state = _apply_plan(game_state, player, plan, hand_snapshot, on_step=on_step)
     game_state = _decide_pass_or_end(game_state, player)
+    logger.debug(f"[AI] take_ai_turn: plan applied, final decision — "
+                 f"p1_passed={game_state.p1_passed}, p2_passed={game_state.p2_passed}, "
+                 f"p1_turn={game_state.p1_turn}, sleeping 3s before broadcasting")
     time.sleep(3)
     if on_step:
         on_step(game_state)
+    logger.debug(f"[AI] take_ai_turn: done for player {player}")
     return game_state
 
 

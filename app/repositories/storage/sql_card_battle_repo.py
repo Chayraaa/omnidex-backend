@@ -51,12 +51,13 @@ class SqlCardBattleRepo:
 
     def update_card_battle_game(self, game: CardBattleGame) -> CardBattleGame:
         model = self.session.get(CardBattleGameModel, game.id)
-        if model:
-            model.name = game.name
-            model.game_state = game.game_state.to_json()
-            model.player1_id = game.player1_id
-            model.player2_id = game.player2_id
-            self.session.commit()
+        if not model:
+            return None
+        model.name = game.name
+        model.game_state = game.game_state.to_json()
+        model.player1_id = game.player1_id
+        model.player2_id = game.player2_id
+        self.session.commit()
         return CardBattleGame(
             id=model.id,
             name=model.name,
